@@ -122,6 +122,12 @@ svg{display:block}
 .qrw svg{width:1.3em;height:1.3em}
 .news{background:#fff6d0;border:.12em solid var(--ink);border-radius:.7em;padding:.4em .6em;margin:.4em 0;text-align:center;font-weight:900}
 
+.urow.prest{background:linear-gradient(#fff6fa,#ffe6ef);border-width:.16em}
+.swatch{width:100%;height:100%;border-radius:.6em;border:.13em solid var(--ink)}
+.strong{font-weight:900;opacity:1!important;color:#c2410c}
+.btn.swb{width:2.4em;min-width:0;height:2.1em;padding:0}
+.btn.swb.on{box-shadow:0 0 0 .18em #fff,0 0 0 .32em var(--ink)}
+
 /* Toast */
 #toast{position:absolute;left:50%;top:30%;z-index:25;transform:translate(-50%,0) scale(.9);background:rgba(61,36,18,.93);color:#fff;font-weight:800;padding:.55em 1.1em;border-radius:1.2em;font-size:.9em;pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;max-width:88%;text-align:center;line-height:1.25}
 #toast.show{opacity:1;transform:translate(-50%,0) scale(1)}
@@ -218,7 +224,7 @@ svg{display:block}
 /* =====================================================================
    1. CONFIG
    ===================================================================== */
-const VERSION = '0.3';
+const VERSION = '0.4';
 const COLS = 7, ROWS = 9, N = COLS * ROWS;
 const OUT = '#3d2412';
 const FONT = '"Nunito","Varela Round","Arial Rounded MT Bold","Trebuchet MS",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
@@ -227,8 +233,9 @@ const CHAINS = {
   cake:  { max: 8, color: '#ff8fb1', gen: [3, 1] },
   fruit: { max: 8, color: '#e8453c', gen: [3, 5] },
   coffee: { max: 8, color: '#9a6235', gen: [1, 3] },
+  ice: { max: 8, color: '#8fd8ff', gen: [1, 1] },
 };
-const CHAIN_IDS = ['bread', 'cake', 'fruit', 'coffee'];
+const CHAIN_IDS = ['bread', 'cake', 'fruit', 'coffee', 'ice'];
 const BASE_ENERGY = 40;
 const REGEN_SEC = [30, 26, 22, 18, 15, 12];
 const LUCK_BASE = 5, LUCK_STEP = 6;
@@ -241,6 +248,7 @@ const UPG = [
   { id: 'cake',   cost: [80],  chain: true },
   { id: 'fruit',  cost: [250], chain: true, minLvl: 3 },
   { id: 'coffee', cost: [600], chain: true, minLvl: 5 },
+  { id: 'ice',    cost: [1500], chain: true, minLvl: 8 },
 ];
 const HINT_DELAY = 6500;
 const TUT_DONE = 9;
@@ -251,6 +259,26 @@ const STORE_BASE = 4, STORE_STEP = 2;
 const BUBBLE_CHANCE = 0.08, BUBBLE_MS = 90000;
 const VIP_CHANCE = 0.12, VIP_MS = 240000, VIP_MULT = 3;
 const COMBO_MS = 2500;
+const PRESTIGE_LVL = 10, PRESTIGE_BONUS = 0.25;
+const OFFLINE_MIN_MS = 30 * 60000, OFFLINE_CAP_H = 8;
+// bakery locations (prestige): wall gradient, wallpaper, awning stripes, tiles, frame, counter, page bg, pattern shape
+const THEMES = [
+  { wall: ['#ffe7c2', '#f2b277'], pat: 'rgba(214,120,60,0.12)', aw: ['#e8584a', '#fff4e2'], tile: ['#fff4de', '#fbe6c2'], frame: ['#c98149', '#a05a2a'], inner: '#8a4a20', counter: ['#d08c4f', '#a9652f'], page: '#e9a868', shape: 'diamond' },
+  { wall: ['#e3f6f5', '#93d2cf'], pat: 'rgba(40,140,150,0.14)', aw: ['#2f9bd6', '#f2fbff'], tile: ['#f7fdff', '#dcf0f4'], frame: ['#7fb7c9', '#4f8ea3'], inner: '#3e6f80', counter: ['#8cc7d6', '#5c9fb2'], page: '#78c4c7', shape: 'dot' },
+  { wall: ['#f0f5dc', '#c2d696'], pat: 'rgba(80,130,40,0.15)', aw: ['#4f9c3f', '#fbf6e4'], tile: ['#fffbea', '#efebcd'], frame: ['#a8794b', '#7a5230'], inner: '#5e3d22', counter: ['#b98a55', '#8a6037'], page: '#a5c07a', shape: 'leaf' },
+  { wall: ['#f6ecff', '#d2b5f0'], pat: 'rgba(140,90,200,0.15)', aw: ['#a06add', '#fff6ff'], tile: ['#fffaff', '#f1e4fb'], frame: ['#c79ad9', '#9a6cb3'], inner: '#6e4785', counter: ['#d1a6e0', '#a479bc'], page: '#c09ee6', shape: 'star' },
+  { wall: ['#f4f9ff', '#c2daf2'], pat: 'rgba(90,140,200,0.2)', aw: ['#4a78d4', '#ffffff'], tile: ['#ffffff', '#e8f1fb'], frame: ['#9fb6cf', '#6f88a6'], inner: '#4b5f78', counter: ['#b7c8db', '#8aa0b9'], page: '#9cbde2', shape: 'snow' },
+];
+// achievements: stat key, target, coin reward
+const ACH = [
+  { id: 'm1', st: 'm', n: 50, c: 50 }, { id: 'm2', st: 'm', n: 300, c: 150 }, { id: 'm3', st: 'm', n: 1500, c: 500 },
+  { id: 'o1', st: 'o', n: 10, c: 60 }, { id: 'o2', st: 'o', n: 75, c: 200 }, { id: 'o3', st: 'o', n: 300, c: 600 },
+  { id: 'v1', st: 'v', n: 1, c: 80 }, { id: 'v2', st: 'v', n: 10, c: 300 },
+  { id: 'r1', st: 'rec', n: 12, c: 100 }, { id: 'r2', st: 'rec', n: 24, c: 250 }, { id: 'r3', st: 'rec', n: 40, c: 800 },
+  { id: 'mx', st: 'mx', n: 1, c: 300 }, { id: 'cb', st: 'cb', n: 5, c: 100 }, { id: 'cr', st: 'cr', n: 28, c: 200 },
+  { id: 'l1', st: 'lvl', n: 5, c: 100 }, { id: 'l2', st: 'lvl', n: 10, c: 300 }, { id: 'l3', st: 'lvl', n: 20, c: 1000 },
+  { id: 'pr', st: 'pr', n: 1, c: 500 },
+];
 // daily quests: goal(lvl), reward(lvl) -> {c, e}
 const QUESTS = {
   merge: { goal: l => 12 + 3 * Math.min(l, 6), rw: l => ({ c: 25 + 5 * l }), icon: 'merge' },
@@ -338,6 +366,19 @@ const I18N = {
     q_chest: 'Сундук за все задания', open: 'Открыть', t_quest: 'Задание выполнено!',
     t_vip: 'VIP-гость! Награда ×3', t_vip_left: 'VIP-гость не дождался…', combo: 'Комбо ×{n}!',
     new_recipe: 'Новый рецепт!', lvl_info: 'Уровень {l} · опыт {x} из {n}',
+    gen_ice: 'Тележка мороженщика', upg_ice: 'Кафе-мороженое', upg_ice_d: 'Тележка: молоко → рожки → торт-мороженое', chain_ice: 'Кафе-мороженое',
+    theme_0: 'Городская пекарня', theme_1: 'Морская кондитерская', theme_2: 'Лесная пекарня', theme_3: 'Сказочная пекарня', theme_4: 'Зимняя пекарня',
+    interior: 'Интерьер', pr_title: 'Новая пекарня', pr_btn: 'Переехать',
+    pr_desc: 'Переезд в «{name}»: монеты за заказы +{p}% навсегда. Рецепты, достижения и задания сохранятся.',
+    pr_reset: 'Начнёшь с 1 уровня: поле, монеты, улучшения и цепочки (кроме хлебной) начнутся заново.',
+    pr_now: 'Сейчас: +{p}% монет', pr_done_title: 'Добро пожаловать!', pr_done_text: 'Новая пекарня открыта! Теперь все заказы приносят на {p}% больше монет.',
+    tab_quests: 'Задания', tab_ach: 'Достижения', t_ach: 'Достижение получено!',
+    ach_m: 'Мастер слияний', ach_m_d: 'Соедини предметы: {n}', ach_o: 'Любимая пекарня', ach_o_d: 'Выполни заказы: {n}',
+    ach_v: 'Для особых гостей', ach_v_d: 'Обслужи VIP-гостей: {n}', ach_rec: 'Кулинарная книга', ach_rec_d: 'Открой рецепты: {n}',
+    ach_mx: 'Шедевр', ach_mx_d: 'Создай предмет 8 уровня', ach_cb: 'Ловкие руки', ach_cb_d: 'Сделай комбо ×{n}',
+    ach_cr: 'Генеральная уборка', ach_cr_d: 'Открой ящики: {n}', ach_lvl: 'Опытный пекарь', ach_lvl_d: 'Достигни {n} уровня',
+    ach_pr: 'Новоселье', ach_pr_d: 'Переедь в новую пекарню',
+    away_title: 'С возвращением!', away_text: 'Пока тебя не было ({h}), пекарня продавала булочки.', hours: '{h} ч {m} мин',
     vibration: 'Вибрация', quests_locked: 'Задания откроются после обучения', lvl_new: 'Новое в магазине: {name}!', max: 'макс.',
     thanks: ['Спасибо!', 'Вкусно!', 'Ммм!', 'Ура!', 'Чудесно!', 'Объедение!', 'Супер!'],
     items: {
@@ -345,6 +386,7 @@ const I18N = {
       cake: ['Яйцо', 'Взбитые яйца', 'Крем', 'Капкейк', 'Эклер', 'Кусок торта', 'Торт', 'Свадебный торт'],
       fruit: ['Вишня', 'Яблоко', 'Корзинка фруктов', 'Джем', 'Тарталетка', 'Пирог', 'Рулет с джемом', 'Королевский пирог'],
       coffee: ['Кофейные зёрна', 'Молотый кофе', 'Эспрессо', 'Капучино', 'Латте', 'Мокко', 'Фраппе', 'Золотой кофейник'],
+      ice: ['Молоко', 'Шарик пломбира', 'Рожок', 'Эскимо', 'Двойной рожок', 'Сандей', 'Банановый сплит', 'Торт-мороженое'],
     },
   },
   en: {
@@ -404,6 +446,19 @@ const I18N = {
     q_chest: 'Chest for all tasks', open: 'Open', t_quest: 'Task complete!',
     t_vip: 'VIP guest! Reward ×3', t_vip_left: 'The VIP guest couldn\u2019t wait…', combo: 'Combo ×{n}!',
     new_recipe: 'New recipe!', lvl_info: 'Level {l} · XP {x} of {n}',
+    gen_ice: 'Ice Cream Cart', upg_ice: 'Ice Cream Parlor', upg_ice_d: 'Cart: milk → cones → ice cream cake', chain_ice: 'Ice Cream Parlor',
+    theme_0: 'City Bakery', theme_1: 'Seaside Bakery', theme_2: 'Forest Bakery', theme_3: 'Fairy Bakery', theme_4: 'Winter Bakery',
+    interior: 'Interior', pr_title: 'New Bakery', pr_btn: 'Move',
+    pr_desc: 'Move to "{name}": +{p}% order coins forever. Recipes, achievements and tasks are kept.',
+    pr_reset: 'You restart at level 1: board, coins, upgrades and chains (except bread) start over.',
+    pr_now: 'Now: +{p}% coins', pr_done_title: 'Welcome!', pr_done_text: 'Your new bakery is open! All orders now pay {p}% more coins.',
+    tab_quests: 'Tasks', tab_ach: 'Achievements', t_ach: 'Achievement unlocked!',
+    ach_m: 'Merge Master', ach_m_d: 'Merge items: {n}', ach_o: 'Beloved Bakery', ach_o_d: 'Complete orders: {n}',
+    ach_v: 'Special Guests', ach_v_d: 'Serve VIP guests: {n}', ach_rec: 'Cookbook', ach_rec_d: 'Discover recipes: {n}',
+    ach_mx: 'Masterpiece', ach_mx_d: 'Make a level 8 item', ach_cb: 'Quick Hands', ach_cb_d: 'Make a ×{n} combo',
+    ach_cr: 'Spring Cleaning', ach_cr_d: 'Open crates: {n}', ach_lvl: 'Seasoned Baker', ach_lvl_d: 'Reach level {n}',
+    ach_pr: 'Housewarming', ach_pr_d: 'Move to a new bakery',
+    away_title: 'Welcome back!', away_text: 'While you were away ({h}), your bakery kept selling buns.', hours: '{h}h {m}m',
     vibration: 'Vibration', quests_locked: 'Tasks unlock after the tutorial', lvl_new: 'New in the shop: {name}!', max: 'max',
     thanks: ['Thanks!', 'Yummy!', 'Mmm!', 'Yay!', 'Lovely!', 'Delicious!', 'Super!'],
     items: {
@@ -411,6 +466,7 @@ const I18N = {
       cake: ['Egg', 'Whisked Eggs', 'Cream', 'Cupcake', 'Eclair', 'Cake Slice', 'Cake', 'Wedding Cake'],
       fruit: ['Cherries', 'Apple', 'Fruit Basket', 'Jam', 'Tartlet', 'Pie', 'Jam Roll', 'Royal Pie'],
       coffee: ['Coffee Beans', 'Ground Coffee', 'Espresso', 'Cappuccino', 'Latte', 'Mocha', 'Frappe', 'Golden Coffee Pot'],
+      ice: ['Milk', 'Ice Cream Scoop', 'Ice Cream Cone', 'Popsicle', 'Double Cone', 'Sundae', 'Banana Split', 'Ice Cream Cake'],
     },
   },
 };
@@ -1237,7 +1293,113 @@ const COFFEE = [
     hl(g, 34, 60, 3.5, 10, 0.25, 0.75); star(g, 82, 26, 7, '#fff6b0');
   },
 ];
-const ITEM_ART = { bread: BREAD, cake: CAKE, fruit: FRUIT, coffee: COFFEE };
+/* ---------- Ice cream chain ---------- */
+const FLAV = { van: ['#fffbe8', '#f0d9a0'], str: ['#ffd6e0', '#ff86aa'], cho: ['#b98058', '#6a3a20'], mint: ['#ddfbe9', '#79d3a2'] };
+function scoop(g, x, y, r, fl, drip) {
+  const f = FLAV[fl];
+  g.beginPath(); g.moveTo(x - r, y + r * 0.25);
+  g.bezierCurveTo(x - r * 1.08, y - r * 1.15, x + r * 1.08, y - r * 1.15, x + r, y + r * 0.25);
+  for (let i = 0; i < 4; i++) { const xa = x + r - (i + 0.5) * (r / 2), xb = x + r - (i + 1) * (r / 2); g.quadraticCurveTo(xa, y + r * 0.62, xb, y + r * 0.25); }
+  g.closePath(); fs(g, rgd(g, x, y - r * 0.2, r * 1.35, f[0], f[1]), 4);
+  if (drip) { g.beginPath(); g.moveTo(x + r * 0.1, y + r * 0.4); g.quadraticCurveTo(x + r * 0.18, y + r * 0.95, x + r * 0.3, y + r * 0.4); g.closePath(); fs(g, f[1], 2.5); }
+  hl(g, x - r * 0.4, y - r * 0.45, r * 0.28, r * 0.16, -0.5, 0.75);
+}
+function waffleCone(g, x, top, w, h) {
+  g.beginPath(); g.moveTo(x - w / 2, top); g.lineTo(x + w / 2, top); g.lineTo(x + 2, top + h - 2); g.quadraticCurveTo(x, top + h + 1, x - 2, top + h - 2); g.closePath();
+  fs(g, lg(g, x - w / 2, 0, x + w / 2, 0, '#f7c77a', '#d18a3c'));
+  g.save(); g.clip(); g.lineWidth = 2; g.strokeStyle = 'rgba(120,60,20,0.45)';
+  for (let k = -4; k <= 4; k++) { g.beginPath(); g.moveTo(x + k * 9 - 30, top - 5); g.lineTo(x + k * 9 + 30, top + h + 5); g.stroke(); g.beginPath(); g.moveTo(x + k * 9 + 30, top - 5); g.lineTo(x + k * 9 - 30, top + h + 5); g.stroke(); }
+  g.restore();
+  g.beginPath(); g.moveTo(x - w / 2, top); g.lineTo(x + w / 2, top); g.lineTo(x + 2, top + h - 2); g.quadraticCurveTo(x, top + h + 1, x - 2, top + h - 2); g.closePath(); st(g, 4.5);
+}
+function sprinkles(g, pts) {
+  const sc = ['#4c9fe0', '#ffcc3e', '#6cc04a', '#a874e0', '#ff5c8a'];
+  pts.forEach((q, i) => { g.save(); g.translate(q[0], q[1]); g.rotate(q[2]); rr(g, -2.6, -1, 5.2, 2, 1); g.fillStyle = sc[i % sc.length]; g.fill(); g.restore(); });
+}
+const ICE = [
+  function milk(g) {
+    shadow(g, 50, 90, 24, 5);
+    g.beginPath(); g.moveTo(39, 22); g.lineTo(61, 22); g.lineTo(61, 32); g.quadraticCurveTo(72, 40, 72, 52); g.lineTo(72, 82); g.quadraticCurveTo(72, 88, 66, 88); g.lineTo(34, 88); g.quadraticCurveTo(28, 88, 28, 82); g.lineTo(28, 52); g.quadraticCurveTo(28, 40, 39, 32); g.closePath();
+    fs(g, lg(g, 28, 0, 72, 0, '#ffffff', '#dfe7f0'));
+    rr(g, 30, 56, 40, 22, 5); fs(g, '#7cc4ef', 3.5);
+    g.fillStyle = '#fff'; ell(g, 50, 67, 6, 7); g.fill(); g.beginPath(); g.moveTo(44, 65); g.quadraticCurveTo(50, 52, 56, 65); g.fill();
+    rr(g, 36, 13, 28, 11, 4); fs(g, '#4c9fe0', 4);
+    hl(g, 34, 50, 2.5, 12, 0, 0.8);
+  },
+  function cupScoop(g) {
+    shadow(g, 50, 90, 26, 5);
+    g.save(); g.translate(68, 40); g.rotate(0.5); rr(g, -3, -22, 6, 30, 3); fs(g, '#e8c18a', 3.5); g.restore();
+    scoop(g, 50, 52, 21, 'str', true);
+    g.beginPath(); g.moveTo(28, 60); g.lineTo(72, 60); g.lineTo(65, 88); g.lineTo(35, 88); g.closePath(); fs(g, lg(g, 28, 0, 72, 0, '#ff9dba', '#e5577f'));
+    g.save(); g.clip(); g.fillStyle = 'rgba(255,255,255,0.85)'; for (const x of [34, 46, 58, 70]) { g.beginPath(); g.moveTo(x, 58); g.lineTo(x + 5, 58); g.lineTo(x + 3, 90); g.lineTo(x - 2, 90); g.closePath(); g.fill(); } g.restore();
+    g.beginPath(); g.moveTo(28, 60); g.lineTo(72, 60); g.lineTo(65, 88); g.lineTo(35, 88); g.closePath(); st(g, 4.5);
+  },
+  function cone(g) {
+    shadow(g, 50, 92, 18, 4);
+    waffleCone(g, 50, 52, 36, 40);
+    scoop(g, 50, 46, 20, 'van', true);
+    sprinkles(g, [[42, 36, 0.5], [55, 33, -0.4], [48, 42, 1.2], [60, 41, 0.3], [38, 44, -0.8]]);
+  },
+  function popsicle(g) {
+    shadow(g, 50, 92, 20, 4);
+    rr(g, 44, 62, 12, 30, 5); fs(g, '#e8c18a', 4);
+    rr(g, 28, 14, 44, 56, 20); fs(g, lg(g, 28, 0, 72, 0, '#a86a43', '#5e3018'));
+    g.save(); rr(g, 28, 14, 44, 56, 20); g.clip();
+    circ(g, 70, 16, 14); g.fillStyle = '#fff6dc'; g.fill();
+    g.globalCompositeOperation = 'destination-out'; circ(g, 70, 16, 10); g.fill();
+    g.globalCompositeOperation = 'source-over'; circ(g, 70, 16, 10); st(g, 3.5);
+    g.beginPath(); g.moveTo(26, 40); for (let i = 0; i < 6; i++) g.lineTo(32 + i * 7, i % 2 ? 46 : 36); g.lineWidth = 3; g.strokeStyle = '#ffe2b8'; g.stroke();
+    g.restore();
+    g.save(); g.beginPath(); g.rect(0, 0, 100, 100); g.arc(70, 16, 10, 0, Math.PI * 2, true); g.clip('evenodd'); rr(g, 28, 14, 44, 56, 20); st(g, 4.5); g.restore();
+    hl(g, 35, 34, 3, 12, 0, 0.55);
+  },
+  function doubleCone(g) {
+    shadow(g, 50, 92, 18, 4);
+    waffleCone(g, 50, 58, 34, 36);
+    scoop(g, 50, 54, 18, 'mint', true);
+    scoop(g, 50, 36, 16, 'cho', false);
+    g.beginPath(); g.moveTo(51, 16); g.quadraticCurveTo(54, 10, 60, 8); st(g, 3);
+    cherry(g, 50, 19, 5.5);
+  },
+  function sundae(g) {
+    shadow(g, 50, 92, 26, 5);
+    g.save(); g.translate(72, 30); g.rotate(0.4); rr(g, -4, -20, 8, 34, 2); fs(g, '#f2c06a', 3.5); strokeLine(g, [-3, -10, 3, -10], 1.5); strokeLine(g, [-3, 0, 3, 0], 1.5); g.restore();
+    scoop(g, 37, 44, 13, 'str', false); scoop(g, 63, 44, 13, 'cho', false); scoop(g, 50, 36, 14, 'van', false);
+    ell(g, 50, 24, 9, 5); fs(g, '#fffaf4', 3.5); g.beginPath(); g.moveTo(44, 23); g.quadraticCurveTo(50, 10, 55, 22); g.closePath(); fs(g, '#fffaf4', 3.5);
+    cherry(g, 52, 13, 5);
+    g.beginPath(); g.moveTo(20, 48); g.lineTo(80, 48); g.quadraticCurveTo(76, 70, 56, 72); g.lineTo(44, 72); g.quadraticCurveTo(24, 70, 20, 48); g.closePath();
+    fs(g, 'rgba(200,235,255,0.55)', 4.5);
+    rr(g, 46, 72, 8, 10, 2); fs(g, '#dff2ff', 3.5);
+    ell(g, 50, 85, 18, 5); fs(g, '#dff2ff', 4);
+    hl(g, 28, 56, 3, 7, 0.4, 0.8);
+  },
+  function bananaSplit(g) {
+    shadow(g, 50, 90, 42, 6);
+    g.beginPath(); g.moveTo(8, 62); g.quadraticCurveTo(50, 72, 92, 62); g.quadraticCurveTo(86, 86, 50, 86); g.quadraticCurveTo(14, 86, 8, 62); g.closePath(); fs(g, lg(g, 0, 62, 0, 86, '#a8dcf8', '#4fa3d8'));
+    g.beginPath(); g.moveTo(10, 60); g.quadraticCurveTo(30, 46, 46, 56); g.quadraticCurveTo(30, 54, 12, 66); g.closePath(); fs(g, '#ffe066', 3.5);
+    g.beginPath(); g.moveTo(90, 60); g.quadraticCurveTo(70, 46, 54, 56); g.quadraticCurveTo(70, 54, 88, 66); g.closePath(); fs(g, '#ffe066', 3.5);
+    scoop(g, 30, 56, 12, 'str', false); scoop(g, 70, 56, 12, 'cho', false); scoop(g, 50, 52, 13, 'van', false);
+    for (const [x, y] of [[30, 44], [50, 38], [70, 44]]) { ell(g, x, y + 2, 6, 4); fs(g, '#fffaf4', 3); }
+    cherry(g, 30, 40, 4.5); cherry(g, 50, 34, 4.5); cherry(g, 70, 40, 4.5);
+    hl(g, 24, 76, 8, 2.5, 0.1, 0.6);
+  },
+  function iceCake(g) {
+    shadow(g, 50, 91, 39, 6);
+    cylinder(g, 50, 52, 36, 11, 30, '#ffffff', '#fff4f7');
+    g.save(); g.beginPath(); g.moveTo(14, 52); g.lineTo(14, 82); g.ellipse(50, 82, 36, 11, 0, Math.PI, 0, true); g.lineTo(86, 52); g.ellipse(50, 52, 36, 11, 0, 0, Math.PI, false); g.closePath(); g.clip();
+    g.fillStyle = '#7a4527'; g.fillRect(10, 70, 80, 30);
+    g.fillStyle = '#ffffff'; g.fillRect(10, 64, 80, 7);
+    g.fillStyle = '#ff9dba'; g.fillRect(10, 50, 80, 15);
+    g.restore();
+    g.beginPath(); g.moveTo(14, 52); g.lineTo(14, 82); g.ellipse(50, 82, 36, 11, 0, Math.PI, 0, true); g.lineTo(86, 52); st(g);
+    ell(g, 50, 52, 36, 11); fs(g, '#fff4f7');
+    scoop(g, 34, 48, 10, 'mint', false); scoop(g, 66, 48, 10, 'cho', false); scoop(g, 50, 44, 12, 'str', false);
+    cherry(g, 50, 32, 5);
+    for (const x of [24, 76]) { g.save(); g.translate(x, 40); g.rotate(x < 50 ? -0.3 : 0.3); rr(g, -3.5, -12, 7, 20, 2); fs(g, '#f2c06a', 3); g.restore(); }
+    hl(g, 22, 66, 2.5, 8, 0, 0.6);
+  },
+];
+const ITEM_ART = { bread: BREAD, cake: CAKE, fruit: FRUIT, coffee: COFFEE, ice: ICE };
 
 /* ---------- Generators ---------- */
 const GEN_ART = {
@@ -1287,6 +1449,24 @@ const GEN_ART = {
     strokeLine(g, [50, 60, 50, 67], 3, '#6b3a1e');
     cup(g, 40, 60, 67, 80, lg(g, 40, 0, 60, 0, '#ffffff', '#dde3ea'));
     hl(g, 22, 34, 2.5, 12, 0, 0.45);
+  },
+  ice(g) {
+    shadow(g, 46, 92, 38, 5);
+    strokeLine(g, [64, 22, 64, 56], 5.5); strokeLine(g, [64, 22, 64, 56], 2.2, '#cfd8e0');
+    g.beginPath(); g.moveTo(34, 30); g.quadraticCurveTo(64, -6, 94, 30);
+    for (let i = 0; i < 4; i++) g.quadraticCurveTo(94 - (i + 0.5) * 15, 38, 94 - (i + 1) * 15, 30);
+    g.closePath();
+    g.save(); g.fillStyle = '#ff8fb1'; g.fill(); g.clip(); g.fillStyle = '#fff6fa';
+    for (let k = 0; k < 4; k++) { g.beginPath(); g.moveTo(64, 6); g.lineTo(34 + k * 16, 40); g.lineTo(42 + k * 16, 40); g.closePath(); g.fill(); }
+    g.restore();
+    g.beginPath(); g.moveTo(34, 30); g.quadraticCurveTo(64, -6, 94, 30); for (let i = 0; i < 4; i++) g.quadraticCurveTo(94 - (i + 0.5) * 15, 38, 94 - (i + 1) * 15, 30); g.closePath(); st(g, 4);
+    circ(g, 64, 10, 3.5); fs(g, '#ffcc3e', 2.5);
+    scoop(g, 24, 50, 8, 'str', false); scoop(g, 38, 49, 8, 'mint', false); scoop(g, 52, 50, 8, 'van', false);
+    rr(g, 12, 52, 66, 28, 8); fs(g, lg(g, 0, 52, 0, 80, '#9fe0ff', '#4fb3e0'));
+    rr(g, 20, 58, 50, 15, 5); fs(g, '#fff8ec', 3);
+    g.save(); g.translate(45, 65.5); g.rotate(Math.PI / 2); g.scale(0.32, 0.32); waffleCone(g, 0, -18, 30, 36); g.restore();
+    strokeLine(g, [78, 60, 90, 54], 5); strokeLine(g, [78, 60, 90, 54], 2, '#cfd8e0');
+    for (const x of [26, 66]) { circ(g, x, 82, 8); fs(g, '#6f7884', 4); circ(g, x, 82, 2.5); g.fillStyle = '#dfe6ee'; g.fill(); }
   },
 };
 function millBlades(g) {
@@ -1513,6 +1693,8 @@ const ICON = {
   merge: '<svg viewBox="0 0 24 24"><circle cx="6.5" cy="8" r="4" fill="#ff9dba" stroke="#3d2412" stroke-width="1.6"/><circle cx="17.5" cy="8" r="4" fill="#ff9dba" stroke="#3d2412" stroke-width="1.6"/><path d="M8.5 12.5L12 16l3.5-3.5" fill="none" stroke="#3d2412" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="19" r="3" fill="#ffcc3e" stroke="#3d2412" stroke-width="1.5"/></svg>',
   bell: '<svg viewBox="0 0 24 24"><path d="M4 17a8 8 0 0 1 16 0z" fill="#ffcc3e" stroke="#3d2412" stroke-width="1.8" stroke-linejoin="round"/><rect x="2.5" y="17" width="19" height="3.2" rx="1.2" fill="#d29358" stroke="#3d2412" stroke-width="1.6"/><circle cx="12" cy="7.3" r="1.9" fill="#ffcc3e" stroke="#3d2412" stroke-width="1.5"/><path d="M8 13.5a4.5 4.5 0 0 1 3-3" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>',
   toStore: '<svg viewBox="0 0 24 24"><rect x="3" y="10" width="18" height="11" rx="2" fill="#d29358" stroke="#3d2412" stroke-width="1.7"/><path d="M3.5 14h17" stroke="#3d2412" stroke-width="1.3" opacity=".6"/><path d="M12 2.5v8M8.5 7L12 10.5 15.5 7" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 2.5v8M8.5 7L12 10.5 15.5 7" fill="none" stroke="#3d2412" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  trophy: '<svg viewBox="0 0 24 24"><path d="M7 3h10v5a5 5 0 0 1-10 0z" fill="#ffcc3e" stroke="#3d2412" stroke-width="1.7"/><path d="M7 5H4.2a3 3 0 0 0 3 4.2M17 5h2.8a3 3 0 0 1-3 4.2" fill="none" stroke="#3d2412" stroke-width="1.6"/><path d="M10.5 13h3v3.5h-3z" fill="#f0a81a" stroke="#3d2412" stroke-width="1.4"/><rect x="7" y="16.5" width="10" height="4" rx="1.2" fill="#d29358" stroke="#3d2412" stroke-width="1.6"/><path d="M9.5 5.5v2" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  house: '<svg viewBox="0 0 24 24"><path d="M5 10v10h14V10L12 4z" fill="#fff8ec" stroke="#3d2412" stroke-width="1.7" stroke-linejoin="round"/><path d="M3 11.5L12 3.5l9 8" fill="none" stroke="#3d2412" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11.5L12 3.5l9 8" fill="none" stroke="#e8584a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><rect x="10" y="14" width="4" height="6" rx="1" fill="#ffae1f" stroke="#3d2412" stroke-width="1.4"/><rect x="6.5" y="12" width="2.5" height="2.5" fill="#8fd0f5" stroke="#3d2412" stroke-width="1"/><rect x="15" y="12" width="2.5" height="2.5" fill="#8fd0f5" stroke="#3d2412" stroke-width="1"/></svg>',
   pantry: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5" fill="#d29358" stroke="#3d2412" stroke-width="1.8"/><path d="M3.5 12h17" stroke="#3d2412" stroke-width="1.6"/><rect x="6" y="6" width="4" height="5" rx="1" fill="#fff8ec" stroke="#3d2412" stroke-width="1.2"/><rect x="12" y="7" width="5" height="4" rx="1" fill="#ffd43b" stroke="#3d2412" stroke-width="1.2"/><rect x="7" y="14.5" width="9" height="4.5" rx="1.2" fill="#ff8fb1" stroke="#3d2412" stroke-width="1.2"/></svg>',
 };
 
@@ -1557,6 +1739,7 @@ let pendingLevelUp = 0;
 let shakeT = 0, shakeAmp = 0;
 let lastNoEnergyModal = -Infinity;
 let frameNo = 0;
+let awayMs = 0;
 
 const idx = (r, c) => r * COLS + c;
 const rowOf = i => Math.floor(i / COLS), colOf = i => i % COLS;
@@ -1564,15 +1747,18 @@ const energyMax = () => BASE_ENERGY + 10 * G.up.cap;
 const regenMs = () => REGEN_SEC[G.up.regen] * 1000;
 const luckPct = () => LUCK_BASE + LUCK_STEP * G.up.luck;
 const storeCap = () => STORE_BASE + STORE_STEP * G.up.store;
+const coinMult = () => 1 + PRESTIGE_BONUS * (G.pr || 0);
 const unlocked = () => CHAIN_IDS.filter(c => c === 'bread' || G.up[c] > 0);
 const xpNeed = l => 4 + l * 6;
 const sellPrice = l => Math.max(1, Math.pow(2, l - 2) | 0);
 const itemKey = (c, l) => c + l;
 
+const upDefaults = () => Object.fromEntries(UPG.map(u => [u.id, 0]));
 function freshState() {
   G = { v: 1, energy: BASE_ENERGY, eTs: Date.now(), coins: 30, xp: 0, lvl: 1, done: 0,
-    up: { cap: 0, regen: 0, luck: 0, store: 0, cake: 0, fruit: 0, coffee: 0 }, disc: { bread: 1 }, tut: 0, tu: 0, lang: null, pg: [],
-    daily: { d: '', s: 0 }, book: {}, st: [], q: null, vib: 1 };
+    up: upDefaults(), disc: { bread: 1 }, tut: 0, tu: 0, lang: null, pg: [],
+    daily: { d: '', s: 0 }, book: {}, st: [], q: null, vib: 1,
+    pr: 0, th: 0, stats: { m: 0, o: 0, v: 0, cr: 0, cb: 0, mx: 0, ml: 1 }, ach: {} };
   board = new Array(N).fill(null);
   for (let r = 5; r < ROWS; r++) for (let c = 0; c < COLS; c++) board[idx(r, c)] = { k: 'x', hp: r === 5 ? 1 : 2 };
   board[idx(3, 3)] = { k: 'g', c: 'bread' };
@@ -1607,7 +1793,7 @@ function serialize() {
   return {
     v: 1, ts: Date.now(), b: board.map(enc), e: G.energy, et: G.eTs, co: G.coins, xp: G.xp, lv: G.lvl, dn: G.done,
     up: G.up, disc: G.disc, tut: G.tut, tu: G.tu, lang: G.lang, pg: G.pg, snd: Snd.enabled ? 1 : 0, mus: Snd.music ? 1 : 0,
-    daily: G.daily, book: G.book, st: G.st, q: G.q, vib: G.vib,
+    daily: G.daily, book: G.book, st: G.st, q: G.q, vib: G.vib, pr: G.pr, th: G.th, stats: G.stats, ach: G.ach,
     o: slots.map(s => s.o && s.state !== 'out' ? { cu: s.o.cust, r: s.o.req.map(r => r.c + ':' + r.l), rw: s.o.reward, x: s.o.xp, v: s.o.vip || 0 } : null),
   };
 }
@@ -1617,7 +1803,7 @@ function deserialize(d) {
   G = {
     v: 1, energy: num(d.e, BASE_ENERGY), eTs: num(d.et, Date.now()), coins: Math.max(0, num(d.co, 0)), xp: Math.max(0, num(d.xp, 0)),
     lvl: Math.max(1, num(d.lv, 1)), done: num(d.dn, 0),
-    up: Object.assign({ cap: 0, regen: 0, luck: 0, store: 0, cake: 0, fruit: 0, coffee: 0 }, d.up || {}),
+    up: Object.assign(upDefaults(), d.up || {}),
     disc: Object.assign({ bread: 1 }, d.disc || {}), tut: num(d.tut, 0), lang: d.lang === 'ru' || d.lang === 'en' ? d.lang : null,
     pg: Array.isArray(d.pg) ? d.pg.filter(c => CHAINS[c]) : [],
     // v0.1 saves have no `tu`: veterans skip the tutorial
@@ -1626,7 +1812,13 @@ function deserialize(d) {
     book: d.book && typeof d.book === 'object' ? d.book : {},
     st: Array.isArray(d.st) ? d.st.filter(x => { const it = dec(x); return it && it.k === 'i'; }).slice(0, STORE_BASE + STORE_STEP * 3) : [],
     q: validQuests(d.q), vib: d.vib === 0 ? 0 : 1,
+    pr: clamp(num(d.pr, 0) | 0, 0, 999), th: num(d.th, 0) | 0,
+    stats: Object.assign({ m: 0, o: num(d.dn, 0), v: 0, cr: 0, cb: 0, mx: 0, ml: Math.max(1, num(d.lv, 1)) }, d.stats || {}),
+    ach: d.ach && typeof d.ach === 'object' ? d.ach : {},
   };
+  G.th = clamp(G.th, 0, Math.min(THEMES.length - 1, G.pr));
+  for (const k in G.stats) G.stats[k] = Math.max(0, num(G.stats[k], 0));
+  awayMs = Math.max(0, Date.now() - num(d.ts, Date.now()));
   for (const c in G.disc) if (!CHAINS[c]) delete G.disc[c]; else G.disc[c] = clamp(num(G.disc[c], 1) | 0, 1, CHAINS[c].max);
   for (const u of UPG) G.up[u.id] = clamp(num(G.up[u.id], 0) | 0, 0, u.cost.length);
   board = d.b.map(dec);
@@ -1661,7 +1853,7 @@ function makeOrder(req, avoidCust, bonusLvl) {
   const cust = free.length ? pick(free) : rint(0, CUST.length - 1);
   let reward = 0, xp = 0;
   for (const r of req) { reward += Math.round(1.5 * Math.pow(2, r.l - 1) + 2); xp += r.l; }
-  reward = Math.round(reward * (1 + 0.05 * (G.lvl - 1 + (bonusLvl || 0))));
+  reward = Math.round(reward * (1 + 0.05 * (G.lvl - 1 + (bonusLvl || 0))) * coinMult());
   return { cust, req, reward, xp, ph: Math.random() * 6000, ready: false, have: [], vip: 0 };
 }
 function genOrder() {
@@ -1756,27 +1948,37 @@ function layout() {
   buildBg();
   updateInfo();
 }
+function patShape(g, shape, x, y) {
+  g.beginPath();
+  switch (shape) {
+    case 'dot': g.arc(x, y, 2.6, 0, Math.PI * 2); g.fill(); break;
+    case 'leaf': g.ellipse(x, y, 4.5, 2.2, -0.6, 0, Math.PI * 2); g.fill(); break;
+    case 'star': for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, r = i % 2 ? 1.3 : 4.2; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); g.fill(); break;
+    case 'snow': for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; g.moveTo(x - Math.cos(a) * 4, y - Math.sin(a) * 4); g.lineTo(x + Math.cos(a) * 4, y + Math.sin(a) * 4); } g.lineWidth = 1.4; g.strokeStyle = g.fillStyle; g.stroke(); break;
+    default: g.moveTo(x, y - 3.5); g.lineTo(x + 3, y); g.lineTo(x, y + 3.5); g.lineTo(x - 3, y); g.closePath(); g.fill();
+  }
+}
+const theme = () => THEMES[(G && G.th) || 0];
 function buildBg() {
-  const { W, H, dpr } = L;
+  const { W, H, dpr } = L, T = theme();
+  document.body.style.background = T.page; app.style.background = T.wall[1];
   const g = bgCanvas.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.lineJoin = 'round'; g.lineCap = 'round';
-  let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#ffe7c2'); gr.addColorStop(1, '#f2b277');
+  let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, T.wall[0]); gr.addColorStop(1, T.wall[1]);
   g.fillStyle = gr; g.fillRect(0, 0, W, H);
-  g.fillStyle = 'rgba(214,120,60,0.12)';
+  g.fillStyle = T.pat;
   const sp = 26;
-  for (let y = 0, row = 0; y < H + sp; y += sp, row++) for (let x = (row % 2) * sp / 2; x < W + sp; x += sp) {
-    g.beginPath(); g.moveTo(x, y - 3.5); g.lineTo(x + 3, y); g.lineTo(x, y + 3.5); g.lineTo(x - 3, y); g.closePath(); g.fill();
-  }
+  for (let y = 0, row = 0; y < H + sp; y += sp, row++) for (let x = (row % 2) * sp / 2; x < W + sp; x += sp) patShape(g, T.shape, x, y);
   // shop window behind customers
   const wy = L.oy - 6, wh = L.oh + 10;
-  rr(g, 4, wy, W - 8, wh, 14); g.fillStyle = 'rgba(255,250,235,0.55)'; g.fill();
+  rr(g, 4, wy, W - 8, wh, 14); g.fillStyle = 'rgba(255,255,255,0.5)'; g.fill();
   g.lineWidth = 2; g.strokeStyle = 'rgba(61,36,18,0.18)'; g.stroke();
   // awning
   const aw = L.awning, n = 9, sw = W / n;
   g.fillStyle = 'rgba(61,36,18,0.18)'; g.fillRect(0, aw, W, 8);
   for (let i = 0; i < n; i++) {
-    g.fillStyle = i % 2 ? '#fff4e2' : '#e8584a';
+    g.fillStyle = i % 2 ? T.aw[1] : T.aw[0];
     g.fillRect(i * sw, 0, sw + 0.5, aw);
     g.beginPath(); g.arc(i * sw + sw / 2, aw, sw / 2, 0, Math.PI); g.fill();
   }
@@ -1787,19 +1989,19 @@ function buildBg() {
   // counter
   const cy = L.oy + L.oh + 2, ch = Math.max(8, L.by - L.fr - cy - 3);
   if (ch > 4) {
-    rr(g, -10, cy, W + 20, ch, 6); g.fillStyle = lg(g, 0, cy, 0, cy + ch, '#d08c4f', '#a9652f'); g.fill(); g.lineWidth = 3; g.strokeStyle = OUT; g.stroke();
+    rr(g, -10, cy, W + 20, ch, 6); g.fillStyle = lg(g, 0, cy, 0, cy + ch, T.counter[0], T.counter[1]); g.fill(); g.lineWidth = 3; g.strokeStyle = OUT; g.stroke();
     g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(0, cy + 2, W, 2);
   }
   // board frame
   const { bx, by, bw, bh, fr, cs } = L;
   rr(g, bx - fr, by - fr, bw + 2 * fr, bh + 2 * fr, fr * 1.6);
-  g.fillStyle = lg(g, 0, by - fr, 0, by + bh + fr, '#c98149', '#a05a2a'); g.fill(); g.lineWidth = 3; g.strokeStyle = OUT; g.stroke();
-  rr(g, bx - 2, by - 2, bw + 4, bh + 4, cs * 0.2); g.fillStyle = '#8a4a20'; g.fill();
+  g.fillStyle = lg(g, 0, by - fr, 0, by + bh + fr, T.frame[0], T.frame[1]); g.fill(); g.lineWidth = 3; g.strokeStyle = OUT; g.stroke();
+  rr(g, bx - 2, by - 2, bw + 4, bh + 4, cs * 0.2); g.fillStyle = T.inner; g.fill();
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const x = bx + c * cs, y = by + r * cs;
     rr(g, x + 1.5, y + 1.5, cs - 3, cs - 3, cs * 0.18);
-    g.fillStyle = (r + c) % 2 ? '#fbe6c2' : '#fff4de'; g.fill();
-    g.fillStyle = 'rgba(160,90,40,0.12)'; g.fillRect(x + cs * 0.2, y + cs - 4, cs * 0.6, 1.5);
+    g.fillStyle = (r + c) % 2 ? T.tile[1] : T.tile[0]; g.fill();
+    g.fillStyle = 'rgba(80,60,40,0.1)'; g.fillRect(x + cs * 0.2, y + cs - 4, cs * 0.6, 1.5);
   }
 }
 
@@ -2002,7 +2204,7 @@ function hitCrate(i, force) {
   if (it.hp > 0) { Snd.play('crate'); return; }
   Snd.play('open');
   FX.ring(p.x, p.y, L.cs * 0.8, '#fff6c0');
-  questEvent('crate');
+  questEvent('crate'); G.stats.cr++;
   const r = Math.random(), ch = unlocked();
   if (r < 0.5) board[i] = { k: 'i', c: pick(ch), l: 1, _pop: now };
   else if (r < 0.65) board[i] = { k: 'i', c: pick(ch), l: 2, _pop: now };
@@ -2038,6 +2240,7 @@ function doMerge(from, to) {
     coinShower(p.x, p.y, bonus, 1700);
   } else if (nl >= 3 && nl < CHAINS[A.c].max && G.tu >= TUT_DONE && Math.random() < BUBBLE_CHANCE) spawnBubble(to, A.c, nl);
   questEvent('merge'); questEvent('craft', 1, nl);
+  G.stats.m++; if (nl >= 8) G.stats.mx = 1; if (combo > G.stats.cb) G.stats.cb = combo;
   if (G.tu === 1) tutAdvance(2); else if (G.tu === 4) tutAdvance(TUT_DONE);
   select(to);
 }
@@ -2169,11 +2372,26 @@ function buildQuests() {
   w.appendChild(f);
   return w;
 }
-function refreshQuests() { if (modalOpen && el.modal._kind === 'quests') { el.mBody.innerHTML = ''; el.mBody.appendChild(buildQuests()); } }
+let questTab = 'q';
+function questsBody() {
+  const w = document.createElement('div');
+  const tabs = document.createElement('div'); tabs.className = 'tabs';
+  for (const id of ['q', 'a']) {
+    const b = document.createElement('button'); b.className = 'tab' + (questTab === id ? ' on' : '');
+    b.innerHTML = t(id === 'q' ? 'tab_quests' : 'tab_ach') + ((id === 'q' ? questsClaimable() : achClaimable()) ? '<i class="dot"></i>' : '');
+    b.onclick = () => { if (questTab === id) return; Snd.play('click'); questTab = id; el.mBody.innerHTML = ''; el.mBody.appendChild(questsBody()); el.mBody.scrollTop = 0; };
+    tabs.appendChild(b);
+  }
+  w.appendChild(tabs);
+  w.appendChild(questTab === 'q' ? buildQuests() : buildAch());
+  return w;
+}
+function refreshQuests() { if (modalOpen && el.modal._kind === 'quests') { const sc = el.mBody.scrollTop; el.mBody.innerHTML = ''; el.mBody.appendChild(questsBody()); el.mBody.scrollTop = sc; } }
 function openQuests() {
   if (!questsActive()) { toast(t('quests_locked')); return; }
   ensureQuests();
-  openModal({ kind: 'quests', title: t('quests_title'), node: buildQuests(), buttons: [{ label: t('close'), cls: 'red', act: closeModal }] });
+  questTab = questsClaimable() || !achClaimable() ? 'q' : 'a';
+  openModal({ kind: 'quests', title: t('quests'), node: questsBody(), buttons: [{ label: t('close'), cls: 'red', act: closeModal }] });
 }
 function handleDrop(from, to, px, py) {
   const A = board[from], now = performance.now();
@@ -2243,6 +2461,7 @@ function deliver(s, mult) {
   Snd.play('deliver'); buzz(20);
   sl.state = 'out'; sl.t0 = now; sl.next = now + 1900;
   questEvent('order'); questEvent('coins', coins);
+  G.stats.o++; if (o.vip) G.stats.v++;
   if (G.tu === 2) tutAdvance(3);
   checkLevelUp();
   changed();
@@ -2250,6 +2469,7 @@ function deliver(s, mult) {
 }
 function checkLevelUp() {
   while (G.xp >= xpNeed(G.lvl)) { G.xp -= xpNeed(G.lvl); G.lvl++; pendingLevelUp++; }
+  G.stats.ml = Math.max(G.stats.ml, G.lvl);
   if (pendingLevelUp) setTimeout(showLevelUp, 1100);
 }
 function sellSelected() {
@@ -2509,6 +2729,7 @@ function buildUpgrades() {
     row.appendChild(ic); row.appendChild(tx); row.appendChild(bt);
     wrap.appendChild(row);
   }
+  wrap.appendChild(buildPrestige());
   return wrap;
 }
 function buildBook() {
@@ -2693,6 +2914,91 @@ function drawTutorial(now) {
     drawHand(x + cs * 0.05, y + cs * 0.12 - press1 * cs * 0.08, 1 - press1 * 0.12);
   }
 }
+/* ---------- Prestige: move to a new bakery ---------- */
+const nextTheme = () => Math.min(THEMES.length - 1, G.pr + 1);
+const swatch = i => 'linear-gradient(90deg,' + THEMES[i].aw[0] + ' 0 25%,' + THEMES[i].aw[1] + ' 25% 50%,' + THEMES[i].aw[0] + ' 50% 75%,' + THEMES[i].aw[1] + ' 75%)';
+function buildPrestige() {
+  const row = document.createElement('div'); row.className = 'urow prest';
+  const nt = nextTheme(), locked = G.lvl < PRESTIGE_LVL, pct = Math.round(PRESTIGE_BONUS * 100);
+  row.innerHTML = '<div class="uic"><div class="swatch" style="background:' + swatch(nt) + '"></div></div><div class="utext"><b>' + t('pr_title') + '</b><small>' +
+    t('pr_desc', { name: t('theme_' + nt), p: pct }) + '</small>' + (G.pr ? '<small class="strong">' + t('pr_now', { p: Math.round(PRESTIGE_BONUS * 100 * G.pr) }) + '</small>' : '') + '</div>';
+  const bt = document.createElement('button');
+  bt.className = 'btn ubuy ' + (locked ? 'gray' : 'pink');
+  bt.innerHTML = locked ? '<i>' + ICON.lock + '</i>' + t('need_lvl', { n: PRESTIGE_LVL }) : t('pr_btn');
+  bt.onclick = () => {
+    if (locked) { Snd.play('error'); shakeEl(bt); toast(t('need_lvl', { n: PRESTIGE_LVL })); return; }
+    closeModal();
+    openModal({ title: t('pr_title'), html: '<div class="bigicon">' + ICON.house + '</div><p class="center">' + t('pr_desc', { name: t('theme_' + nt), p: pct }) + '</p><p class="center small">' + t('pr_reset') + '</p>',
+      buttons: [{ label: t('no'), cls: 'gray', act: closeModal }, { label: t('pr_btn'), cls: 'pink', act: () => { closeModal(); doPrestige(); } }] });
+  };
+  row.appendChild(bt);
+  return row;
+}
+function doPrestige() {
+  const keep = { disc: G.disc, book: G.book, daily: G.daily, q: G.q, lang: G.lang, vib: G.vib, stats: G.stats, ach: G.ach, tut: G.tut, pr: G.pr + 1 };
+  freshState();
+  Object.assign(G, keep);
+  G.tu = TUT_DONE; G.th = Math.min(THEMES.length - 1, G.pr); G.coins = 50;
+  for (const sl of slots) if (sl.o) sl.o.reward = Math.round(sl.o.reward * coinMult());
+  selected = -1; dispCoins = G.coins; pendingLevelUp = 0;
+  buildBg(); changed(); updateGift(); saveNow(true);
+  Snd.play('levelup'); buzz([40, 60, 40]);
+  FX.burst(L.W / 2, L.H * 0.45, '#ffcc3e', 30, 1.6);
+  const name = t('theme_' + G.th);
+  openModal({ title: t('pr_done_title', { name }), html: '<div class="bigicon">' + ICON.house + '</div><p class="center">' + t('pr_done_text', { p: Math.round(PRESTIGE_BONUS * 100 * G.pr) }) + '</p>',
+    buttons: [{ label: t('great'), cls: 'green', act: closeModal }] });
+}
+
+/* ---------- Achievements ---------- */
+function statVal(st) {
+  if (st === 'rec') return CHAIN_IDS.reduce((a, c) => a + (G.disc[c] || 0), 0);
+  if (st === 'lvl') return Math.max(G.lvl, G.stats.ml || 1);
+  if (st === 'pr') return G.pr;
+  return G.stats[st] || 0;
+}
+const achReady = a => statVal(a.st) >= a.n && !G.ach[a.id];
+function achClaimable() { return ACH.some(achReady); }
+function achTitle(a) {
+  const same = ACH.filter(x => x.st === a.st);
+  return t('ach_' + a.st) + (same.length > 1 ? ' ' + ['I', 'II', 'III', 'IV'][same.indexOf(a)] : '');
+}
+function buildAch() {
+  const w = document.createElement('div');
+  const list = ACH.slice().sort((a, b) => (achReady(b) - achReady(a)) || (!!G.ach[a.id] - !!G.ach[b.id]));
+  for (const a of list) {
+    const v = Math.min(statVal(a.st), a.n), done = !!G.ach[a.id], ready = achReady(a);
+    const r = document.createElement('div'); r.className = 'qrow' + (done ? ' done' : '');
+    r.innerHTML = '<div class="uic">' + ICON.trophy + '</div><div class="utext"><b>' + achTitle(a) + '</b><small>' + t('ach_' + a.st + '_d', { n: a.n }) + '</small>' +
+      '<div class="bbar"><i style="width:' + Math.round(100 * v / a.n) + '%"></i></div><small>' + v + ' / ' + a.n + '</small></div>';
+    const right = document.createElement('div'); right.className = 'qright';
+    if (done) right.innerHTML = ICON.tick;
+    else if (ready) {
+      const b = document.createElement('button'); b.className = 'btn green ubuy pulse'; b.textContent = t('claim');
+      b.onclick = () => { if (G.ach[a.id]) return; G.ach[a.id] = 1; Snd.play('reward'); grant({ c: a.c }, elCenter(b)); saveSoon(); refreshQuests(); };
+      right.appendChild(b);
+    } else right.innerHTML = '<div class="qrw">' + rewardHtml({ c: a.c }) + '</div>';
+    r.appendChild(right); w.appendChild(r);
+  }
+  return w;
+}
+
+/* ---------- Offline earnings ---------- */
+function showAway() {
+  if (awayMs < OFFLINE_MIN_MS || G.tu < TUT_DONE) return;
+  const h = Math.min(OFFLINE_CAP_H, awayMs / 3600000);
+  const coins = Math.max(5, Math.round(h * (6 + 2 * G.lvl) * coinMult()));
+  awayMs = 0;
+  const hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
+  const claim = mult => { closeModal(); G.coins += coins * mult; Snd.play('reward'); coinShower(L.W / 2, L.H * 0.45, coins * mult, 0); saveSoon(); };
+  openModal({
+    title: t('away_title'),
+    html: '<div class="bigicon">' + ICON.house + '</div><p class="center">' + t('away_text', { h: t('hours', { h: hh, m: mm }) }) + '</p><div class="rew"><span>+' + coins + ICON.coin + '</span></div>',
+    buttons: [
+      { label: t('claim'), cls: 'green', act: () => claim(1) },
+      { label: ICON.play + ' ×2', cls: 'yellow', act: () => Platform.showRewarded(ok => { if (ok) claim(2); else toast(t('t_ad_fail')); }) },
+    ],
+  });
+}
 function buildSettings() {
   const w = document.createElement('div');
   const row = (label, ctrl) => { const r = document.createElement('div'); r.className = 'srow'; const s = document.createElement('span'); s.textContent = label; r.appendChild(s); r.appendChild(ctrl); w.appendChild(r); };
@@ -2704,6 +3010,15 @@ function buildSettings() {
   row(t('sound'), seg([{ v: true, l: t('on') }, { v: false, l: t('off') }], Snd.enabled, v => { setSound(v); refresh(); }));
   row(t('vibration'), seg([{ v: 1, l: t('on') }, { v: 0, l: t('off') }], G.vib, v => { G.vib = v; if (v) buzz(30); saveSoon(); refresh(); }));
   row(t('music'), seg([{ v: true, l: t('on') }, { v: false, l: t('off') }], Snd.music, v => { Snd.setMusic(v); saveSoon(); refresh(); }));
+  if (G.pr > 0) {
+    const d = document.createElement('div'); d.className = 'seg';
+    for (let i = 0; i <= Math.min(THEMES.length - 1, G.pr); i++) {
+      const b = document.createElement('button'); b.className = 'btn swb' + (G.th === i ? ' on' : ''); b.style.background = swatch(i); b.title = t('theme_' + i);
+      b.onclick = () => { Snd.play('click'); G.th = i; buildBg(); saveSoon(); toast(t('theme_' + i)); refresh(); };
+      d.appendChild(b);
+    }
+    row(t('interior'), d);
+  }
   row(t('language'), seg([{ v: 'ru', l: 'Рус' }, { v: 'en', l: 'Eng' }], LANG, v => { G.lang = v; LANG = v; applyLang(); saveSoon(); el.mTitle.textContent = t('settings'); refresh(); }));
   const rb = document.createElement('button'); rb.className = 'btn gray'; rb.style.width = '100%'; rb.style.marginTop = '.6em'; rb.textContent = t('reset');
   rb.onclick = () => {
@@ -3017,10 +3332,10 @@ function drawGen(it, x, y, size, now, dt) {
     const idle = Math.sin(now * 0.004) * 0.025;
     const sx = 1 + sq * 0.8 - idle, sy = 1 - sq + idle, s = size * 0.92;
     g.drawImage(SPR.get('g:cake'), x - s * sx / 2, y + s / 2 - s * sy, s * sx, s * sy);
-  } else if (it.c === 'fruit') {
+  } else if (it.c === 'fruit' || it.c === 'ice') {
     const rot = Math.sin(now * 0.0021) * 0.035 + (tk < 1 ? Math.sin(tk * 18) * 0.1 * (1 - tk) : 0);
     const s = size * 0.92;
-    g.save(); g.translate(x, y + s / 2); g.rotate(rot); g.drawImage(SPR.get('g:fruit'), -s / 2, -s, s, s); g.restore();
+    g.save(); g.translate(x, y + s / 2); g.rotate(rot); g.drawImage(SPR.get('g:' + it.c), -s / 2, -s, s, s); g.restore();
   } else {
     // coffee machine: tiny idle hum + hop on tap, steam puffs
     const hop = tk < 1 ? Math.sin(tk * Math.PI) * size * 0.08 : 0;
@@ -3147,7 +3462,10 @@ function slowTick(now) {
   updateGift();
   const sd = shopAttention(); if (hudCache.sd !== sd) { hudCache.sd = sd; $('shopDot').classList.toggle('hidden', !sd); }
   ensureQuests();
-  const qd = questsClaimable(); if (hudCache.qd !== qd) { hudCache.qd = qd; $('questDot').classList.toggle('hidden', !qd); }
+  const qd = questsClaimable() || (questsActive() && achClaimable()); if (hudCache.qd !== qd) { hudCache.qd = qd; $('questDot').classList.toggle('hidden', !qd); }
+  const an = ACH.filter(achReady).length;
+  if (hudCache.an !== undefined && an > hudCache.an && questsActive()) { toast(t('t_ach')); Snd.play('quest'); }
+  hudCache.an = an;
   popExpiredBubbles();
   if (selected >= 0 && board[selected] && board[selected].k === 'b') updateInfo();
   const dn = Date.now();
@@ -3245,7 +3563,7 @@ function boot() {
     Platform.gameplayStart();
     const ld = $('loader'); ld.classList.add('fade'); setTimeout(() => ld.classList.add('hidden'), 500);
     if (G.tu === 0) setTimeout(showWelcome, 350);
-    else if (dailyAvailable()) setTimeout(showDaily, 700);
+    else { if (dailyAvailable()) setTimeout(showDaily, 700); setTimeout(showAway, 800); }
   }).catch(e => { console.error(e); $('loaderText').textContent = 'Error: ' + e.message; });
 }
 
