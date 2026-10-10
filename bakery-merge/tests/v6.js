@@ -42,3 +42,23 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await b.close();
   console.log(fails ? fails + ' FAILED' : 'ALL PASSED');
 })();
+// --- welcome back after the tab was hidden for a while (separate run)
+(async () => {
+  await new Promise(r => setTimeout(r, 15000));
+  const b = await chromium.launch();
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'ru-RU' });
+  await ctx.addInitScript(() => { const real = Date.now.bind(Date); window.__warp = 0; Date.now = () => real() + window.__warp; });
+  const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + GAME); await sleep(800);
+  await p.click('#mBtns .btn'); await sleep(200);
+  await p.evaluate(() => { const B = window.__bakery; B.G.tu = 9; B.G.daily.d = B.dayStr(0); B.changed(); });
+  await sleep(300);
+  await p.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
+  await p.evaluate(() => { window.__warp += 2 * 3600000; Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); document.dispatchEvent(new Event('visibilitychange')); });
+  await sleep(800);
+  const title = await p.textContent('#mTitle').catch(() => '');
+  const ok = await p.isVisible('#modal') && title === 'С возвращением!';
+  console.log((ok ? 'PASS' : 'FAIL') + ' welcome-back modal after 2h in background (' + title + ')');
+  console.log(errs.length ? 'FAIL errors ' + JSON.stringify(errs) : 'PASS no errors (resume)');
+  await b.close();
+})();

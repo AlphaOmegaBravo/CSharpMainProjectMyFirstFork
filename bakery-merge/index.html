@@ -3727,9 +3727,11 @@ function stopLoop() { running = false; }
 
 // pause reasons: 'hidden' (tab), 'sdk' (platform asked to pause)
 const pauses = new Set();
+let pausedAt = 0;
 function pauseGame(reason) {
   const was = pauses.size > 0; pauses.add(reason);
   if (was) return;
+  pausedAt = Date.now();
   saveNow(true); Snd.pause(true); stopLoop(); Platform.gameplayStop();
   if (press) cancelPress();
 }
@@ -3738,6 +3740,12 @@ function resumeGame(reason) {
   if (!Platform.adOpen) Snd.pause(false);
   tickEnergy(); startLoop(); lastInput = performance.now();
   if (!modalOpen && !Platform.adOpen) Platform.gameplayStart();
+  // came back to a backgrounded tab: welcome-back coins and the new day's gift
+  if (pausedAt && G && G.tu >= TUT_DONE && !Platform.adOpen) {
+    const away = Date.now() - pausedAt; pausedAt = 0;
+    if (away >= OFFLINE_MIN_MS) { awayMs = away; setTimeout(showAway, 300); }
+    if (dailyAvailable()) setTimeout(showDaily, 200);
+  }
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame('hidden'); else resumeGame('hidden'); });
 window.addEventListener('pagehide', () => saveNow(true));
