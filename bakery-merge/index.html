@@ -229,7 +229,7 @@ svg{display:block}
 /* =====================================================================
    1. CONFIG
    ===================================================================== */
-const VERSION = '0.5';
+const VERSION = '0.6';
 const COLS = 7, ROWS = 9, N = COLS * ROWS;
 const OUT = '#3d2412';
 const FONT = '"Nunito","Varela Round","Arial Rounded MT Bold","Trebuchet MS",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
@@ -263,7 +263,8 @@ const BOOK_REWARD = 100;
 const STORE_BASE = 4, STORE_STEP = 2;
 const BUBBLE_CHANCE = 0.08, BUBBLE_MS = 90000;
 const VIP_CHANCE = 0.12, VIP_MS = 240000, VIP_MULT = 3;
-const COMBO_MS = 2500;
+const COMBO_MS = 2500, COMBO_MAX_BONUS = 5;
+const SKIP_MS = 3 * 60000;   // an unfinished order can be swapped after this time
 const PRESTIGE_LVL = 10, PRESTIGE_BONUS = 0.25;
 // wheel of fortune: 1 free spin a day + WHEEL_ADS spins for rewarded ads; w = weight
 const WHEEL = [{ c: 20, w: 20 }, { e: 10, w: 18 }, { c: 50, w: 12 }, { e: 20, w: 10 }, { c: 120, w: 4 }, { i: 3, w: 12 }, { e: 35, w: 5 }, { c: 30, w: 19 }];
@@ -1851,7 +1852,7 @@ function serialize() {
     v: 1, ts: Date.now(), b: board.map(enc), e: G.energy, et: G.eTs, co: G.coins, xp: G.xp, lv: G.lvl, dn: G.done,
     up: G.up, disc: G.disc, tut: G.tut, tu: G.tu, lang: G.lang, pg: G.pg, snd: Snd.enabled ? 1 : 0, mus: Snd.music ? 1 : 0,
     daily: G.daily, book: G.book, st: G.st, q: G.q, vib: G.vib, pr: G.pr, th: G.th, stats: G.stats, ach: G.ach, wh: G.wh, eco: G.eco,
-    o: slots.map(s => s.o && s.state !== 'out' ? { cu: s.o.cust, r: s.o.req.map(r => r.c + ':' + r.l), rw: s.o.reward, x: s.o.xp, v: s.o.vip || 0 } : null),
+    o: slots.map(s => s.o && s.state !== 'out' ? { cu: s.o.cust, r: s.o.req.map(r => r.c + ':' + r.l), rw: s.o.reward, x: s.o.xp, v: s.o.vip || 0, t: s.o.t } : null),
   };
 }
 function deserialize(d) {
@@ -1888,7 +1889,7 @@ function deserialize(d) {
     if (!req.length) return;
     const vip = num(o.v, 0);
     if (vip && vip <= Date.now()) return;   // VIP left while we were away
-    setOrder(i, { cust: clamp(o.cu | 0, 0, CUST.length - 1), req, reward: Math.max(1, num(o.rw, 5)), xp: Math.max(1, num(o.x, 2)), ph: Math.random() * 6000, ready: false, have: [], vip: vip || 0 }, true);
+    setOrder(i, { cust: clamp(o.cu | 0, 0, CUST.length - 1), req, reward: Math.max(1, num(o.rw, 5)), xp: Math.max(1, num(o.x, 2)), ph: Math.random() * 6000, ready: false, have: [], vip: vip || 0, t: num(o.t, Date.now()) }, true);
   });
   if (typeof d.snd === 'number') Snd.setEnabled(!!d.snd);
   if (typeof d.mus === 'number') Snd.setMusic(!!d.mus);
@@ -1913,11 +1914,11 @@ function makeOrder(req, avoidCust, bonusLvl) {
   let reward = 0, xp = 0;
   for (const r of req) { reward += Math.round(1.5 * Math.pow(2, r.l - 1) + 2); xp += r.l; }
   reward = Math.round(reward * (1 + 0.05 * (G.lvl - 1 + (bonusLvl || 0))) * coinMult());
-  return { cust, req, reward, xp, ph: Math.random() * 6000, ready: false, have: [], vip: 0 };
+  return { cust, req, reward, xp, ph: Math.random() * 6000, ready: false, have: [], vip: 0, t: Date.now() };
 }
 function genOrder() {
   const ch = unlocked();
-  const maxL = Math.min(8, 2 + Math.ceil(G.lvl / 2));
+  const maxL = Math.min(8, 2 + Math.ceil(G.lvl / 3));   // +1 item level every 3 player levels
   const minL = Math.max(2, maxL - 2);
   let n = 1;
   const r = Math.random();
@@ -2245,7 +2246,7 @@ function spawnFrom(gi) {
   if (tIdx < 0) { Snd.play('error'); gen._shk = now; toast(t('t_no_space')); return; }
   if (G.energy >= energyMax()) G.eTs = Date.now();
   G.energy--;
-  const lvl = Math.random() * 100 < luckPct() ? 2 : 1;
+  const lvl = G.tu >= TUT_DONE && Math.random() * 100 < luckPct() ? 2 : 1;   // no lucky spawns during the tutorial
   const p = cellCenter(gi);
   board[tIdx] = { k: 'i', c: gen.c, l: lvl, _ft: now, _fd: 320, _fx: p.x, _fy: p.y - L.cs * 0.2, _arc: 1, _land: 1 };
   if (lvl > (G.disc[gen.c] || 1)) G.disc[gen.c] = lvl;
@@ -2286,7 +2287,7 @@ function doMerge(from, to) {
   // combo: quick merges in a row
   combo = now - comboT < COMBO_MS ? combo + 1 : 1; comboT = now;
   if (combo >= 3) {
-    const bonus = combo - 1; G.coins += bonus;
+    const bonus = Math.min(combo - 1, COMBO_MAX_BONUS); G.coins += bonus;
     FX.text(t('combo', { n: combo }), p.x, p.y - L.cs * 0.55, combo >= 6 ? '#ff8fb1' : combo >= 4 ? '#8fe0ff' : '#ffe14d', Math.round(clamp(L.cs * 0.42, 16, 26)), 900);
     coinShower(p.x, p.y, bonus, 200);
     Snd.play('combo', combo);
@@ -2749,6 +2750,16 @@ function shopAttention() {
   for (const u of UPG) { const l = G.up[u.id]; if (l < u.cost.length && !lockedByLvl(u) && G.coins >= u.cost[l]) return true; }
   return false;
 }
+/** Applies an upgrade purchase; returns false if it can't be bought. */
+function buyUpgrade(u) {
+  const lvl = G.up[u.id];
+  if (lvl >= u.cost.length || lockedByLvl(u) || G.coins < u.cost[lvl]) return false;
+  G.coins -= u.cost[lvl]; dispCoins = G.coins; G.up[u.id]++;
+  if (u.chain) { G.disc[u.id] = Math.max(G.disc[u.id] || 1, 1); placeGen(u.id); changed(); }
+  if (u.id === 'cap') G.energy += 10;
+  saveSoon();
+  return true;
+}
 function buildUpgrades() {
   const wrap = document.createElement('div');
   for (const u of UPG) {
@@ -2777,12 +2788,8 @@ function buildUpgrades() {
     bt.onclick = () => {
       if (maxed) return;
       if (locked) { Snd.play('error'); shakeEl(bt); toast(t('need_lvl', { n: u.minLvl })); return; }
-      if (G.coins < cost) { Snd.play('error'); shakeEl(bt); toast(t('t_no_coins')); return; }
-      G.coins -= cost; dispCoins = G.coins; G.up[u.id]++;
+      if (!buyUpgrade(u)) { Snd.play('error'); shakeEl(bt); toast(t('t_no_coins')); return; }
       Snd.play('buy');
-      if (u.chain) { G.disc[u.id] = Math.max(G.disc[u.id] || 1, 1); placeGen(u.id); changed(); }
-      if (u.id === 'cap') { G.energy += 10; }
-      saveSoon();
       const r = bt.getBoundingClientRect();
       FX.burst(r.left - L.ax + r.width / 2, r.top - L.ay + r.height / 2, '#ffcc3e', 14, 1);
       refreshShop(true);
@@ -3269,6 +3276,7 @@ function hitCard(p) {
   for (let s = 0; s < 3; s++) { const R = L.cards[s]; if (p.x >= R.x && p.x <= R.x + R.w && p.y >= R.y && p.y <= R.y + R.h) return s; }
   return -1;
 }
+function hitRect(r, p) { return !!r && p.x >= r.x - 8 && p.x <= r.x + r.w + 8 && p.y >= r.y - 8 && p.y <= r.y + r.h + 8; }
 function hitBadge(s, p) {
   const b = L.cards[s].badge; if (!b) return false;
   return p.x >= b.x - 8 && p.x <= b.x + b.w + 8 && p.y >= b.y - 8 && p.y <= b.y + b.h + 8;
@@ -3284,7 +3292,7 @@ cv.addEventListener('pointerdown', e => {
   lastInput = performance.now();
   const p = local(e);
   const s = hitCard(p);
-  if (s >= 0) { press = { type: 'card', s, badge: hitBadge(s, p), id: e.pointerId }; return; }
+  if (s >= 0) { press = { type: 'card', s, badge: hitBadge(s, p), skip: hitRect(L.cards[s].skip, p), id: e.pointerId }; return; }
   const i = cellAt(p.x, p.y);
   if (i < 0 || !board[i]) { select(-1); return; }
   press = { type: 'cell', i, x0: p.x, y0: p.y, x: p.x, y: p.y, drag: false, id: e.pointerId };
@@ -3309,6 +3317,7 @@ function endPress(e, cancel) {
     if (cancel) return;
     const p = local(e);
     if (hitCard(p) !== pr.s) return;
+    if (pr.skip && hitRect(L.cards[pr.s].skip, p)) { skipOrder(pr.s); return; }
     cardTap(pr.s, pr.badge && hitBadge(pr.s, p));
     return;
   }
@@ -3324,6 +3333,13 @@ cv.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('dblclick', e => e.preventDefault());
 
+function skipOrder(s) {
+  const sl = slots[s], o = sl.o;
+  if (!o || o.vip || sl.state === 'out') return;
+  const now = performance.now();
+  o.sad = 1; sl.state = 'out'; sl.t0 = now; sl.next = now + 1300;
+  Snd.play('sad'); recount(); hintDirty = true; saveSoon();
+}
 function cardTap(s, badge) {
   const sl = slots[s], o = sl.o;
   if (!o || sl.state === 'out') return;
@@ -3411,6 +3427,15 @@ function drawOrders(now) {
     rr(g, R.x, R.y, R.w, R.h, 12);
     if (o.vip) { g.lineWidth = 5; g.strokeStyle = '#f0a81a'; g.stroke(); g.lineWidth = 2; g.strokeStyle = OUT; g.stroke(); }
     else { g.lineWidth = 2.5; g.strokeStyle = OUT; g.stroke(); }
+    R.skip = null;
+    if (!o.ready && !o.vip && sl.state !== 'out' && G.tu >= TUT_DONE && Date.now() - o.t > SKIP_MS) {
+      const sr = Math.round(clamp(R.h * 0.1, 10, 14)), sx = R.x + 5 + sr, sy = R.y + 5 + sr;
+      circ(g, sx, sy, sr); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 2; g.strokeStyle = OUT; g.stroke();
+      g.beginPath(); g.arc(sx, sy, sr * 0.5, -0.4, Math.PI * 1.45); g.lineWidth = 2.2; g.strokeStyle = '#4c9fe0'; g.stroke();
+      const ax = sx + Math.cos(-0.4) * sr * 0.5, ay = sy + Math.sin(-0.4) * sr * 0.5;
+      g.beginPath(); g.moveTo(ax + sr * 0.32, ay - sr * 0.05); g.lineTo(ax - sr * 0.12, ay - sr * 0.38); g.lineTo(ax - sr * 0.1, ay + sr * 0.22); g.closePath(); g.fillStyle = '#4c9fe0'; g.fill();
+      R.skip = { x: sx - sr, y: sy - sr, w: sr * 2, h: sr * 2 };
+    }
     if (o.vip && sl.state !== 'out') {
       const left = o.vip - Date.now(), fz = Math.round(clamp(R.h * 0.11, 10, 15)), txt = mmss(left);
       g.font = '900 ' + fz + 'px ' + FONT;
@@ -3766,6 +3791,7 @@ function boot() {
 window.__bakery = {
   get G() { return G; }, get board() { return board; }, get slots() { return slots; }, L,
   get focus() { return focus; }, get wheel() { return G.wh; },
+  sim: { UPG, CHAINS, buyUpgrade, handleDrop, genOrder, tickEnergy, sellPrice, xpNeed, regenMs, energyMax, slowTick: () => slowTick(performance.now()) },
   cellCenter, deliver, spawnFrom: i => spawnFrom(i), layout, renderKey, CUST, render, FX, I18N, Platform, Snd, spawnBubble: (a, c, l) => spawnBubble(a, c, l), setOrder: (s, o, i) => setOrder(s, o, i), makeOrder: r => makeOrder(r), recount: () => recount(), changed: () => changed(), dayStr: d => dayStr(d),
 };
 boot();
