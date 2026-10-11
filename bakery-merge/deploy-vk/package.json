@@ -1,0 +1,13 @@
+{
+  "name": "pyshka-merge-bakery-vk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Пышка: пекарня-мёрдж — деплой на хостинг VK Mini Apps",
+  "homepage": "./",
+  "scripts": {
+    "deploy": "vk-miniapps-deploy"
+  },
+  "devDependencies": {
+    "@vkontakte/vk-miniapps-deploy": "^1.0.3"
+  }
+}

@@ -23,15 +23,17 @@ fs.mkdirSync(OUT, { recursive: true });
     const put = (key, x, y, s, rot) => { const img = B.renderKey(key, Math.round(s * 1.2)); g.save(); g.translate(x, y); g.rotate(rot || 0); g.drawImage(img, -s / 2, -s / 2, s, s); g.restore(); };
     if (kind === 'icon') {
       g.globalAlpha = 0.9; g.drawImage(glow, w * 0.05, h * 0.15, w * 0.9, h * 0.9); g.globalAlpha = 1;
-      put('i:bread:7', w * 0.5, h * 0.66, m * 0.62);
-      put('i:cake:4', w * 0.24, h * 0.42, m * 0.34, -0.25); put('i:fruit:2', w * 0.78, h * 0.42, m * 0.3, 0.25);
+      put('host:h', w * 0.5, h * 0.52, m * 0.74);
+      put('i:bread:7', w * 0.5, h * 0.86, m * 0.44);
+      put('i:cake:4', w * 0.16, h * 0.74, m * 0.28, -0.25); put('i:fruit:2', w * 0.84, h * 0.74, m * 0.26, 0.25);
       g.drawImage(spark, w * 0.66, h * 0.22, m * 0.14, m * 0.14);
     } else {
       g.globalAlpha = 0.8; g.drawImage(glow, w / 2 - m * 0.6, h * 0.2, m * 1.2, m * 1.0); g.globalAlpha = 1;
       const row = ['i:fruit:6', 'i:cake:5', 'i:bread:7', 'i:coffee:4', 'i:ice:6'];
       row.forEach((k, i) => put(k, w * (0.14 + i * 0.18), h * (i === 2 ? 0.66 : 0.72), m * (i === 2 ? 0.42 : 0.3), (i - 2) * 0.08));
-      put('c:0:h', w * 0.08, h * 0.98, m * 0.4); put('c:7:h', w * 0.92, h * 0.98, m * 0.4);
-      const f = Math.round(m * 0.13); g.font = '900 ' + f + 'px "Nunito","Arial Rounded MT Bold","Trebuchet MS",sans-serif';
+      put('host:h', w * 0.1, h * 0.9, m * 0.5); put('c:7:h', w * 0.92, h * 0.98, m * 0.4);
+      let f = Math.round(m * 0.13); g.font = '900 ' + f + 'px "Nunito","Arial Rounded MT Bold","Trebuchet MS",sans-serif';
+      const tw = g.measureText(title).width; if (tw > w * 0.84) { f = Math.floor(f * w * 0.84 / tw); g.font = '900 ' + f + 'px "Nunito","Arial Rounded MT Bold","Trebuchet MS",sans-serif'; }
       g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
       g.lineWidth = f * 0.28; g.strokeStyle = '#3d2412'; g.strokeText(title, w / 2, h * 0.33);
       g.fillStyle = '#fff'; g.fillText(title, w / 2, h * 0.33);
@@ -41,7 +43,7 @@ fs.mkdirSync(OUT, { recursive: true });
   }, [w, h, kind, title]);
   const jobs = [['icon-512.png', 512, 512, 'icon'], ['icon-278.png', 278, 278, 'icon'], ['cover-1920x1080.png', 1920, 1080, 'cover'], ['cover-1100x700.png', 1100, 700, 'cover'], ['cover-800x450.png', 800, 450, 'cover']];
   for (const [name, w, h, kind] of jobs) {
-    const url = await make(w, h, kind, 'Пекарня-мёрдж');
+    const url = await make(w, h, kind, 'Пышка: пекарня-мёрдж');
     fs.writeFileSync(path.join(OUT, name), Buffer.from(url.split(',')[1], 'base64'));
     console.log('wrote store/' + name);
   }
