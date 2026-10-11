@@ -15,12 +15,12 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
 canvas{display:block}
 #bg,#cv,#fx{position:absolute;left:0;top:0}
 #cv{touch-action:none}
-#fx{pointer-events:none;z-index:20}
+#fx{pointer-events:none;z-index:35}
 .hidden{display:none!important}
 svg{display:block}
 
 /* HUD */
-#hud{position:absolute;left:0;right:0;top:0;z-index:10;display:flex;align-items:center;gap:.35em;padding:calc(env(safe-area-inset-top,0px) + .45em) .5em .3em;pointer-events:none}
+#hud{position:absolute;left:0;right:0;top:0;z-index:10;display:flex;align-items:center;gap:.35em;padding:calc(max(env(safe-area-inset-top,0px),var(--inset-top,0px)) + .45em) .5em .3em;pointer-events:none}
 #hud>*{pointer-events:auto}
 .pill{display:flex;align-items:center;height:2.35em;background:var(--cream);border:.16em solid var(--ink);border-radius:1.2em;box-shadow:0 .18em 0 var(--ink);padding:0 .6em 0 .15em;font-weight:900;white-space:nowrap;position:relative;min-width:0}
 .pill i svg{width:1.85em;height:1.85em}
@@ -40,7 +40,7 @@ svg{display:block}
 .rbtn:active,.btn:active{transform:translateY(.14em);box-shadow:0 .06em 0 var(--ink)}
 
 /* Bottom */
-#bottom{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:.25em .5em calc(env(safe-area-inset-bottom,0px) + .5em);pointer-events:none}
+#bottom{position:absolute;left:0;right:0;bottom:0;z-index:10;padding:.25em .5em calc(max(env(safe-area-inset-bottom,0px),var(--inset-bottom,0px)) + .5em);pointer-events:none}
 #bottom>*{pointer-events:auto}
 #info{display:flex;align-items:center;gap:.45em;height:3.15em;background:rgba(255,248,236,.97);border:.16em solid var(--ink);border-radius:.9em;padding:0 .35em;margin-bottom:.45em;box-shadow:0 .16em 0 var(--ink)}
 #infoIcon{width:2.55em;height:2.55em;flex:none}
@@ -133,6 +133,8 @@ svg{display:block}
 .wbtn i svg{width:1.3em;height:1.3em}
 .tabs .tab{font-size:.82em}
 
+.vkrow{background:#eef5ff}
+
 /* Toast */
 #toast{position:absolute;left:50%;top:30%;z-index:25;transform:translate(-50%,0) scale(.9);background:rgba(61,36,18,.93);color:#fff;font-weight:800;padding:.55em 1.1em;border-radius:1.2em;font-size:.9em;pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;max-width:88%;text-align:center;line-height:1.25}
 #toast.show{opacity:1;transform:translate(-50%,0) scale(1)}
@@ -223,13 +225,17 @@ svg{display:block}
   <div id="loader"><canvas id="loaderIcon" width="160" height="160"></canvas><h1 id="loaderTitle">Пекарня-мёрдж</h1><p id="loaderText">Загрузка…</p></div>
 </div>
 <script>
+/*! @vkontakte/vk-bridge v3.0.2 | MIT License | (c) VK — used only inside VK Mini Apps */
+(()=>{"use strict";let e;var t={};let p="u">typeof window,n=!!(p&&window.AndroidBridge),o=!!(p&&window.webkit?.messageHandlers?.VKWebAppClose),r=!!(p&&window.ReactNativeWebView&&"function"==typeof window.ReactNativeWebView.postMessage),i=p&&!n&&!o,a=i&&/(^\?|&)vk_platform=mobile_web(&|$)/.test(location.search),s=i?"message":"VKWebAppEvent",d=["VKWebAppInit","VKWebAppGetCommunityAuthToken","VKWebAppAddToCommunity","VKWebAppAddToHomeScreenInfo","VKWebAppClose","VKWebAppCopyText","VKWebAppCreateHash","VKWebAppGetUserInfo","VKWebAppSetLocation","VKWebAppSendToClient","VKWebAppGetClientVersion","VKWebAppGetPhoneNumber","VKWebAppGetEmail","VKWebAppGetGroupInfo","VKWebAppGetGeodata","VKWebAppGetCommunityToken","VKWebAppGetConfig","VKWebAppGetLaunchParams","VKWebAppSetTitle","VKWebAppGetAuthToken","VKWebAppCallAPIMethod","VKWebAppJoinGroup","VKWebAppLeaveGroup","VKWebAppAllowMessagesFromGroup","VKWebAppDenyNotifications","VKWebAppAllowNotifications","VKWebAppOpenPayForm","VKWebAppOpenApp","VKWebAppShare","VKWebAppShowWallPostBox","VKWebAppScroll","VKWebAppShowOrderBox","VKWebAppShowLeaderBoardBox","VKWebAppShowInviteBox","VKWebAppShowRequestBox","VKWebAppAddToFavorites","VKWebAppShowStoryBox","VKWebAppStorageGet","VKWebAppStorageGetKeys","VKWebAppStorageSet","VKWebAppFlashGetInfo","VKWebAppSubscribeStoryApp","VKWebAppOpenWallPost","VKWebAppCheckAllowedScopes","VKWebAppCheckBannerAd","VKWebAppHideBannerAd","VKWebAppShowBannerAd","VKWebAppCheckNativeAds","VKWebAppShowNativeAds","VKWebAppRetargetingPixel","VKWebAppConversionHit","VKWebAppShowSubscriptionBox","VKWebAppCheckSurvey","VKWebAppShowSurvey","VKWebAppScrollTop","VKWebAppScrollTopStart","VKWebAppScrollTopStop","VKWebAppShowSlidesSheet","VKWebAppTranslate","VKWebAppRecommend","VKWebAppAddToProfile","VKWebAppGetFriends",...i&&!a?["VKWebAppResizeWindow","VKWebAppAddToMenu","VKWebAppShowInstallPushBox","VKWebAppShowCommunityWidgetPreviewBox","VKWebAppCallStart","VKWebAppCallJoin","VKWebAppCallGetStatus"]:["VKWebAppShowImages"]],A=p?window.AndroidBridge:void 0,b=o?window.webkit.messageHandlers:void 0,l=i?parent:void 0,u=function(t){var p;let a,u,W,V,K=[],c=Math.random().toString(36).substring(2,5);function w(e){K.push(e)}function S(e){return n?!!(A&&"function"==typeof A[e]):o?!!(b?.[e]&&"function"==typeof b[e].postMessage):!!i&&d.includes(e)}function f(){return o||n}function h(){return i&&window.parent!==window}function g(){return f()||h()}function v(e){if(o||n)return[...K].map(t=>t.call(null,e));let t=e?.data;if(!i||!t)return;if(r&&"string"==typeof t)try{t=JSON.parse(t)}catch{}let{type:p,data:s,frameId:d}=t;if(p){if("VKWebAppSettings"===p){a=d;return}[...K].map(e=>e({detail:{type:p,data:s}}))}}r&&/(android)/i.test(navigator.userAgent)?document.addEventListener(s,v):"u">typeof window&&"addEventListener"in window&&window.addEventListener(s,v);let y=(p=function(e,p){A?.[e]?A[e](JSON.stringify(p)):b?.[e]&&"function"==typeof b[e].postMessage?b[e].postMessage?.(p):r?window.ReactNativeWebView.postMessage(JSON.stringify({handler:e,params:p})):l&&"function"==typeof l.postMessage&&l.postMessage({handler:e,params:p,type:"vk-connect",webFrameId:a,connectVersion:t},"*")},u={current:0,next(){return++this.current}},W={},V={add(e,t){let p=null!=t?t:`${u.next()}_${c}`;return W[p]=e,p},resolve(e,t,p){let n=W[e];n&&(p(t)?n.resolve(t):n.reject(t),W[e]=null)}},w(e=>{if(e.detail?.data&&"object"==typeof e.detail.data&&"request_id"in e.detail.data){let{request_id:t,...p}=e.detail.data;t&&V.resolve(t,p,e=>!("error_type"in e))}}),function(e,t={}){return new Promise((n,o)=>{let r=V.add({resolve:n,reject:o},t.request_id);p(e,{...t,request_id:r})})});async function m(t){if(n||o)return S(t);if(e)return e.has(t);try{let t=await y("SetSupportedHandlers");e=new Set(t.supportedHandlers)}catch(t){e=new Set(["VKWebAppInit"])}return e.has(t)}return w(t=>{t.detail&&"SetSupportedHandlers"===t.detail.type&&(e=new Set(t.detail.data.supportedHandlers))}),{send:y,sendPromise:y,subscribe:w,unsubscribe:function(e){let t=K.indexOf(e);t>-1&&K.splice(t,1)},supports:function(e){return console.warn("bridge.supports method is deprecated. Use bridge.supportsAsync instead."),S(e)},supportsAsync:m,isWebView:f,isIframe:h,isEmbedded:g,isStandalone:function(){return!g()}}}("3.0.2");window.vkBridge=window.vkConnect=u;var W=window;for(var V in t)W[V]=t[V];t.__esModule&&Object.defineProperty(W,"__esModule",{value:!0})})();
+</script>
+<script>
 (function(){
 'use strict';
 
 /* =====================================================================
    1. CONFIG
    ===================================================================== */
-const VERSION = '0.6';
+const VERSION = '0.7';
 const COLS = 7, ROWS = 9, N = COLS * ROWS;
 const OUT = '#3d2412';
 const FONT = '"Nunito","Varela Round","Arial Rounded MT Bold","Trebuchet MS",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
@@ -269,6 +275,8 @@ const PRESTIGE_LVL = 10, PRESTIGE_BONUS = 0.25;
 // wheel of fortune: 1 free spin a day + WHEEL_ADS spins for rewarded ads; w = weight
 const WHEEL = [{ c: 20, w: 20 }, { e: 10, w: 18 }, { c: 50, w: 12 }, { e: 20, w: 10 }, { c: 120, w: 4 }, { i: 3, w: 12 }, { e: 35, w: 5 }, { c: 30, w: 19 }];
 const WHEEL_ADS = 3;
+// VK social rewards: check the current VK Games rules before release; set to false to keep buttons without rewards
+const VK_SOCIAL_REWARDS = true, VK_INVITE_E = 20, VK_FAV_C = 100;
 const OFFLINE_MIN_MS = 30 * 60000, OFFLINE_CAP_H = 8;
 // bakery locations (prestige): wall gradient, wallpaper, awning stripes, tiles, frame, counter, page bg, pattern shape
 const THEMES = [
@@ -389,6 +397,8 @@ const I18N = {
     ach_pr: 'Новоселье', ach_pr_d: 'Переедь в новую пекарню',
     away_title: 'С возвращением!', away_text: 'Пока тебя не было ({h}), пекарня продавала булочки.', hours: '{h} ч {m} мин',
     rewards: 'Награды', tab_wheel: 'Колесо', spin_free: 'Крутить бесплатно!', spin_ad: 'Крутить ещё ({n})', spin_tomorrow: 'Приходи завтра',
+    t_ad_none: 'Реклама пока недоступна, попробуй чуть позже',
+    vk_invite: 'Позови друзей в пекарню', vk_invite_d: 'Раз в день: +{n} энергии', vk_fav: 'Добавь игру в избранное', vk_fav_d: 'Один раз: +{n} монет', vk_go: 'Позвать', vk_add: 'Добавить',
     eco: 'Экономия заряда', t_coins_add: '+{n} монет!',
     vibration: 'Вибрация', quests_locked: 'Задания откроются после обучения', lvl_new: 'Новое в магазине: {name}!', max: 'макс.',
     thanks: ['Спасибо!', 'Вкусно!', 'Ммм!', 'Ура!', 'Чудесно!', 'Объедение!', 'Супер!'],
@@ -471,6 +481,8 @@ const I18N = {
     ach_pr: 'Housewarming', ach_pr_d: 'Move to a new bakery',
     away_title: 'Welcome back!', away_text: 'While you were away ({h}), your bakery kept selling buns.', hours: '{h}h {m}m',
     rewards: 'Rewards', tab_wheel: 'Wheel', spin_free: 'Free spin!', spin_ad: 'Spin again ({n})', spin_tomorrow: 'Come back tomorrow',
+    t_ad_none: 'No ads available right now, try again later',
+    vk_invite: 'Invite friends to the bakery', vk_invite_d: 'Once a day: +{n} energy', vk_fav: 'Add the game to favorites', vk_fav_d: 'Once: +{n} coins', vk_go: 'Invite', vk_add: 'Add',
     eco: 'Battery saver', t_coins_add: '+{n} coins!',
     vibration: 'Vibration', quests_locked: 'Tasks unlock after the tutorial', lvl_new: 'New in the shop: {name}!', max: 'max',
     thanks: ['Thanks!', 'Yummy!', 'Mmm!', 'Yay!', 'Lovely!', 'Delicious!', 'Super!'],
@@ -592,6 +604,59 @@ const Platform = (() => {
     };
   }
 
+  /* ---------- VK Mini Apps adapter (VK Bridge, inlined above) ---------- */
+  const vkParams = (() => { try { return new URLSearchParams(location.search); } catch (e) { return new URLSearchParams(''); } })();
+  const isVK = () => !!window.vkBridge && (vkParams.has('vk_app_id') || vkParams.has('vk_platform') || param === 'vk');
+  async function makeVK() {
+    const b = window.vkBridge, send = (m, p) => b.send(m, p || {});
+    await withTimeout(send('VKWebAppInit'), 4000);
+    const handlers = { pause: [], resume: [] };
+    b.subscribe(e => {
+      const d = e && e.detail; if (!d) return;
+      if (d.type === 'VKWebAppViewHide') handlers.pause.forEach(f => f());
+      else if (d.type === 'VKWebAppViewRestore') handlers.resume.forEach(f => f());
+      else if (d.type === 'VKWebAppUpdateInsets' && d.data && d.data.insets) {
+        const s = document.documentElement.style;
+        s.setProperty('--inset-top', (d.data.insets.top || 0) + 'px'); s.setProperty('--inset-bottom', (d.data.insets.bottom || 0) + 'px');
+      }
+    });
+    // dragging items near the screen edge must not trigger iOS swipe-back
+    send('VKWebAppSetSwipeSettings', { history: false }).catch(() => send('VKWebAppDisableSwipeBack').catch(() => {}));
+    const check = fmt => withTimeout(send('VKWebAppCheckNativeAds', { ad_format: fmt }).then(d => !!(d && d.result)).catch(() => false), 3000).then(v => !!v);
+    check('reward'); check('interstitial');   // preload
+    const show = (fmt, done) => check(fmt).then(ok => {
+      if (!ok) { done(false, 'noad'); return; }
+      send('VKWebAppShowNativeAds', { ad_format: fmt }).then(d => { done(!!(d && d.result)); check(fmt); }).catch(() => done(false, 'noad'));
+    });
+    const KEY = 'bm', CHUNK = 3500;
+    return {
+      name: 'vk', saveGap: 20000,
+      lang() { return vkParams.get('vk_language'); },
+      rewarded(onOpen, done) { show('reward', done); },
+      interstitial(onOpen, done) { show('interstitial', done); },
+      save(obj) {
+        const s = JSON.stringify(obj), parts = [];
+        for (let i = 0; i < s.length; i += CHUNK) parts.push(s.slice(i, i + CHUNK));
+        return Promise.all(parts.map((v, i) => send('VKWebAppStorageSet', { key: KEY + i, value: v }))).then(() => send('VKWebAppStorageSet', { key: KEY + 'n', value: String(parts.length) }));
+      },
+      load() {
+        return send('VKWebAppStorageGet', { keys: [KEY + 'n'] }).then(d => {
+          const n = +((d.keys && d.keys[0] && d.keys[0].value) || 0);
+          if (!n) return null;
+          const keys = []; for (let i = 0; i < n; i++) keys.push(KEY + i);
+          return send('VKWebAppStorageGet', { keys }).then(r => { const m = {}; (r.keys || []).forEach(k => { m[k.key] = k.value; }); return JSON.parse(keys.map(k => m[k] || '').join('')); });
+        }).catch(() => null);
+      },
+      onPause(fn) { handlers.pause.push(fn); },
+      onResume(fn) { handlers.resume.push(fn); },
+      social: {
+        invite: () => send('VKWebAppShowInviteBox').then(() => true).catch(() => false),
+        favorite: () => send('VKWebAppAddToFavorites').then(d => !!(d && d.result)).catch(() => false),
+      },
+      haptic: () => send('VKWebAppTapticImpactOccurred', { style: 'light' }).catch(() => {}),
+    };
+  }
+
   function loadScript(src, timeout) {
     return new Promise((res, rej) => {
       const s = document.createElement('script');
@@ -625,7 +690,8 @@ const Platform = (() => {
       impl = stub;
       try {
         if (!window.YaGames && isYandexHost()) await loadScript('/sdk.js').catch(() => {});
-        if (window.YaGames) impl = await withTimeout(makeYandex(), 8000) || stub;
+        if (isVK()) impl = await withTimeout(makeVK(), 8000) || stub;
+        else if (window.YaGames) impl = await withTimeout(makeYandex(), 8000) || stub;
       } catch (e) { console.warn('platform init failed, using stub', e); impl = stub; }
       if (impl.onPause) impl.onPause(() => hooks.onPause());
       if (impl.onResume) impl.onResume(() => hooks.onResume());
@@ -639,14 +705,20 @@ const Platform = (() => {
       l = String(l).toLowerCase();
       return /^(ru|uk|be|kk|uz|hy|ka|az|tg|ky)/.test(l) ? 'ru' : 'en';
     },
-    /** cb(rewarded:boolean) */
+    /** cb(rewarded:boolean). On failure the facade itself tells the player why. */
     showRewarded(cb) {
       if (adOpen) return;
       adStart();
-      try {
-        impl.rewarded(() => {}, ok => { adEnd(); try { cb && cb(ok); } catch (e) { console.error(e); } });
-      } catch (e) { adEnd(); cb && cb(false); }
+      const end = (ok, reason) => {
+        adEnd();
+        if (!ok) toast(t(reason === 'noad' ? 't_ad_none' : 't_ad_fail'));
+        try { cb && cb(!!ok); } catch (e) { console.error(e); }
+      };
+      try { impl.rewarded(() => {}, end); } catch (e) { end(false, 'noad'); }
     },
+    /** platform social features (VK): invite friends, add to favorites; null elsewhere */
+    get social() { return (impl && impl.social) || null; },
+    haptic() { impl && impl.haptic && impl.haptic(); },
     canShowInterstitial() {
       const now = performance.now();
       return !adOpen && now - startT >= INTER_FIRST && now - lastAdT >= INTER_MIN_GAP;
@@ -664,8 +736,9 @@ const Platform = (() => {
       try { Store.set(SAVE_KEY, JSON.stringify(obj)); } catch (e) {}
       if (impl && impl.save) {
         pendingCloud = obj;
-        if (flush || performance.now() - cloudT > CLOUD_GAP) cloudFlush();
-        else if (!cloudTimer) cloudTimer = setTimeout(cloudFlush, CLOUD_GAP);
+        const gap = impl.saveGap || CLOUD_GAP;
+        if (flush || performance.now() - cloudT > gap) cloudFlush();
+        else if (!cloudTimer) cloudTimer = setTimeout(cloudFlush, gap);
       }
       return Promise.resolve();
     },
@@ -1816,7 +1889,7 @@ function freshState() {
   G = { v: 1, energy: BASE_ENERGY, eTs: Date.now(), coins: 30, xp: 0, lvl: 1, done: 0,
     up: upDefaults(), disc: { bread: 1 }, tut: 0, tu: 0, lang: null, pg: [],
     daily: { d: '', s: 0 }, book: {}, st: [], q: null, vib: 1,
-    pr: 0, th: 0, stats: { m: 0, o: 0, v: 0, cr: 0, cb: 0, mx: 0, ml: 1 }, ach: {}, wh: null, eco: 0 };
+    pr: 0, th: 0, stats: { m: 0, o: 0, v: 0, cr: 0, cb: 0, mx: 0, ml: 1 }, ach: {}, wh: null, eco: 0, vk: { inv: '', fav: 0 } };
   board = new Array(N).fill(null);
   for (let r = 5; r < ROWS; r++) for (let c = 0; c < COLS; c++) board[idx(r, c)] = { k: 'x', hp: r === 5 ? 1 : 2 };
   board[idx(3, 3)] = { k: 'g', c: 'bread' };
@@ -1851,7 +1924,7 @@ function serialize() {
   return {
     v: 1, ts: Date.now(), b: board.map(enc), e: G.energy, et: G.eTs, co: G.coins, xp: G.xp, lv: G.lvl, dn: G.done,
     up: G.up, disc: G.disc, tut: G.tut, tu: G.tu, lang: G.lang, pg: G.pg, snd: Snd.enabled ? 1 : 0, mus: Snd.music ? 1 : 0,
-    daily: G.daily, book: G.book, st: G.st, q: G.q, vib: G.vib, pr: G.pr, th: G.th, stats: G.stats, ach: G.ach, wh: G.wh, eco: G.eco,
+    daily: G.daily, book: G.book, st: G.st, q: G.q, vib: G.vib, pr: G.pr, th: G.th, stats: G.stats, ach: G.ach, wh: G.wh, eco: G.eco, vk: G.vk,
     o: slots.map(s => s.o && s.state !== 'out' ? { cu: s.o.cust, r: s.o.req.map(r => r.c + ':' + r.l), rw: s.o.reward, x: s.o.xp, v: s.o.vip || 0, t: s.o.t } : null),
   };
 }
@@ -1875,6 +1948,7 @@ function deserialize(d) {
     ach: d.ach && typeof d.ach === 'object' ? d.ach : {},
     wh: d.wh && typeof d.wh.d === 'string' ? { d: d.wh.d, free: d.wh.free ? 1 : 0, ads: clamp(num(d.wh.ads, 0) | 0, 0, WHEEL_ADS) } : null,
     eco: d.eco ? 1 : 0,
+    vk: { inv: d.vk && typeof d.vk.inv === 'string' ? d.vk.inv : '', fav: d.vk && d.vk.fav ? 1 : 0 },
   };
   G.th = clamp(G.th, 0, Math.min(THEMES.length - 1, G.pr));
   for (const k in G.stats) G.stats[k] = Math.max(0, num(G.stats[k], 0));
@@ -2055,13 +2129,19 @@ function buildBg() {
   // board frame
   const { bx, by, bw, bh, fr, cs } = L;
   rr(g, bx - fr, by - fr, bw + 2 * fr, bh + 2 * fr, fr * 1.6);
-  g.fillStyle = lg(g, 0, by - fr, 0, by + bh + fr, T.frame[0], T.frame[1]); g.fill(); g.lineWidth = 3; g.strokeStyle = OUT; g.stroke();
+  g.fillStyle = lg(g, 0, by - fr, 0, by + bh + fr, T.frame[0], T.frame[1]); g.fill();
+  g.save(); g.clip(); g.strokeStyle = 'rgba(60,30,10,0.13)'; g.lineWidth = 1.2;
+  for (let k = 0; k < 40; k++) { const yy = by - fr + k * (bh + 2 * fr) / 40; g.beginPath(); g.moveTo(bx - fr, yy); for (let x = bx - fr; x <= bx + bw + fr; x += 12) g.lineTo(x, yy + Math.sin(x * 0.05 + k * 1.7) * 1.6); g.stroke(); }
+  g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(bx - fr, by - fr, bw + 2 * fr, 2);
+  g.restore();
+  rr(g, bx - fr, by - fr, bw + 2 * fr, bh + 2 * fr, fr * 1.6); g.lineWidth = 3; g.strokeStyle = OUT; g.stroke();
   rr(g, bx - 2, by - 2, bw + 4, bh + 4, cs * 0.2); g.fillStyle = T.inner; g.fill();
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const x = bx + c * cs, y = by + r * cs;
     rr(g, x + 1.5, y + 1.5, cs - 3, cs - 3, cs * 0.18);
     g.fillStyle = (r + c) % 2 ? T.tile[1] : T.tile[0]; g.fill();
-    g.fillStyle = 'rgba(80,60,40,0.1)'; g.fillRect(x + cs * 0.2, y + cs - 4, cs * 0.6, 1.5);
+    g.fillStyle = lg(g, 0, y, 0, y + cs, 'rgba(255,255,255,0.45)', 'rgba(255,255,255,0)', 'rgba(90,50,20,0.08)'); g.fill();
+    rr(g, x + cs * 0.14, y + 3.5, cs * 0.72, cs * 0.12, cs * 0.06); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fill();
   }
 }
 
@@ -2083,7 +2163,7 @@ const FX = (() => {
       const a = Math.random() * Math.PI * 2, sp = rnd(80, 260) * power;
       p.on = true; p.x = x; p.y = y; p.vx = Math.cos(a) * sp; p.vy = Math.sin(a) * sp - 60 * power;
       p.life = 0; p.max = rnd(450, 800); p.size = rnd(5, 11) * (L.cs / 48) * (0.8 + power * 0.2);
-      p.img = i % 3 === 0 ? USPR.get('spark') : USPR.get('dot:' + (i % 3 === 1 ? color : '#fff3b0'));
+      p.img = i % 3 === 0 ? USPR.get('spark') : USPR.get('dot:' + (i % 3 === 1 ? color : '#fff3b0')); p.col = null;
       p.rot = Math.random() * 6; p.vr = rnd(-6, 6); p.grav = 420;
     }
   }
@@ -2092,7 +2172,7 @@ const FX = (() => {
       const p = free(parts); if (!p) return;
       p.on = true; p.x = x + rnd(-L.cs * 0.4, L.cs * 0.4); p.y = y; p.vx = rnd(-40, 40); p.vy = rnd(-160, -90);
       p.life = -i * 70; p.max = rnd(900, 1300); p.size = rnd(7, 11) * (L.cs / 48);
-      p.img = USPR.get('heart'); p.rot = rnd(-0.3, 0.3); p.vr = rnd(-1, 1); p.grav = 30;
+      p.img = USPR.get('heart'); p.col = null; p.rot = rnd(-0.3, 0.3); p.vr = rnd(-1, 1); p.grav = 30;
     }
   }
   const cel = { on: false };
@@ -2131,9 +2211,24 @@ const FX = (() => {
     const p = free(flies); if (!p) { onArrive && onArrive(); return; }
     p.on = true; p.img = img; p.x0 = x0; p.y0 = y0; p.x1 = x1; p.y1 = y1; p.s0 = s0; p.s1 = s1; p.dur = dur; p.t = -(delay || 0); p.cb = onArrive; p.arc = arc === undefined ? 60 : arc;
   }
-  function ring(x, y, r1, color) {
+  function ring(x, y, r1, color, fill) {
     const p = free(rings); if (!p) return;
-    p.on = true; p.x = x; p.y = y; p.r1 = r1; p.t = 0; p.dur = 420; p.c = color || '#fff';
+    p.on = true; p.x = x; p.y = y; p.r1 = r1; p.t = 0; p.dur = fill ? 240 : 420; p.c = color || '#fff'; p.fill = !!fill;
+  }
+  const CONF = ['#ff7aa2', '#ffcc3e', '#6cc04a', '#4c9fe0', '#a874e0', '#ff9f43'];
+  function confetti(n) {
+    if (G && G.eco) n = Math.ceil(n / 2);
+    for (let i = 0; i < n; i++) {
+      const p = free(parts); if (!p) return;
+      p.on = true; p.x = rnd(0, L.W); p.y = rnd(-L.H * 0.15, -10); p.vx = rnd(-40, 40); p.vy = rnd(60, 160);
+      p.life = -rnd(0, 500); p.max = rnd(1800, 2600); p.size = rnd(5, 9); p.img = null; p.col = pick(CONF);
+      p.rot = Math.random() * 6; p.vr = rnd(-8, 8); p.grav = 60;
+    }
+  }
+  function trail(x, y) {
+    const p = free(parts); if (!p) return;
+    p.on = true; p.x = x + rnd(-6, 6); p.y = y + rnd(-6, 6); p.vx = rnd(-20, 20); p.vy = rnd(-30, 0);
+    p.life = 0; p.max = rnd(300, 500); p.size = rnd(3, 6) * (L.cs / 48); p.img = USPR.get('spark'); p.col = null; p.rot = 0; p.vr = rnd(-4, 4); p.grav = 40;
   }
   function activeAny() {
     if (cel.on) return true;
@@ -2149,6 +2244,7 @@ const FX = (() => {
     g.setTransform(L.dpr, 0, 0, L.dpr, 0, 0);
     for (const r of rings) if (r.on) {
       r.t += dt; const k = r.t / r.dur; if (k >= 1) { r.on = false; continue; }
+      if (r.fill) { g.globalAlpha = (1 - k) * 0.75; g.drawImage(USPR.get('glow'), r.x - r.r1 * (0.6 + k * 0.6), r.y - r.r1 * (0.6 + k * 0.6), r.r1 * (1.2 + k * 1.2), r.r1 * (1.2 + k * 1.2)); continue; }
       g.globalAlpha = (1 - k) * 0.9; g.beginPath(); g.arc(r.x, r.y, r.r1 * easeOutCubic(k), 0, Math.PI * 2); g.lineWidth = 6 * (1 - k) + 1; g.strokeStyle = r.c; g.stroke();
     }
     if (cel.on) drawCelebrate(g, dt);
@@ -2158,7 +2254,9 @@ const FX = (() => {
       p.vy += p.grav * s; p.vx *= 0.985; p.x += p.vx * s; p.y += p.vy * s; p.rot += p.vr * s;
       const k = p.life / p.max, sz = p.size * (1 - k * 0.6);
       g.globalAlpha = 1 - k * k;
-      g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.drawImage(p.img, -sz, -sz, sz * 2, sz * 2); g.restore();
+      g.save(); g.translate(p.x, p.y); g.rotate(p.rot);
+      if (p.col) { g.fillStyle = p.col; g.fillRect(-sz, -sz * 0.45, sz * 2, sz * 0.9); } else g.drawImage(p.img, -sz, -sz, sz * 2, sz * 2);
+      g.restore();
     }
     for (const f of flies) if (f.on) {
       f.t += dt; if (f.t < 0) continue;
@@ -2179,7 +2277,7 @@ const FX = (() => {
     g.globalAlpha = 1;
     return true;
   }
-  return { burst, hearts, celebrate, text, fly, ring, frame, get active() { return wasActive; } };
+  return { burst, hearts, celebrate, text, fly, ring, confetti, trail, frame, get active() { return wasActive; } };
 })();
 
 /* =====================================================================
@@ -2252,6 +2350,7 @@ function spawnFrom(gi) {
   if (lvl > (G.disc[gen.c] || 1)) G.disc[gen.c] = lvl;
   Snd.play('spawn');
   FX.burst(p.x, p.y - L.cs * 0.2, '#ffffff', 5, 0.5);
+  FX.text('-1', p.x + L.cs * 0.3, p.y - L.cs * 0.35, '#ffe14d', Math.round(clamp(L.cs * 0.32, 12, 18)), 650);
   if (G.tu === 3 && ++tutSpawns >= 2) tutAdvance(4);
   questEvent('spawn');
   changed();
@@ -2272,7 +2371,10 @@ function hitCrate(i, force) {
   else { board[i] = null; G.coins += 3; FX.text('+3', p.x, p.y, '#ffe14d', 20); coinShower(p.x, p.y, 3, 100); }
 }
 let combo = 0, comboT = 0;
-function buzz(ms) { if (G && G.vib && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} } }
+function buzz(ms) {
+  if (!G || !G.vib) return;
+  if (navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) {} } else Platform.haptic();
+}
 function doMerge(from, to) {
   const A = board[from], now = performance.now(), nl = A.l + 1;
   board[from] = null;
@@ -2280,6 +2382,7 @@ function doMerge(from, to) {
   const p = cellCenter(to);
   FX.burst(p.x, p.y, CHAINS[A.c].color, 14 + nl * 2, 1 + nl * 0.08);
   FX.ring(p.x, p.y, L.cs * (0.7 + nl * 0.05), '#fffbe6');
+  FX.ring(p.x, p.y, L.cs * 1.1, '#fff', true);
   Snd.play('merge', nl);
   if (nl >= 6) { shakeT = now; shakeAmp = 2 + (nl - 6) * 1.5; }
   if (nl >= 4) buzz(nl >= 6 ? 25 : 12);
@@ -2323,7 +2426,7 @@ function claimBubble(i, paid) {
     FX.burst(p.x, p.y, '#bfe9ff', 16, 1); FX.ring(p.x, p.y, L.cs * 0.8, '#dff6ff');
     Snd.play('pop'); selected = -1; select(i); changed();
   };
-  if (!paid) { Platform.showRewarded(ok => ok ? go() : toast(t('t_ad_fail'))); return; }
+  if (!paid) { Platform.showRewarded(ok => ok && go()); return; }
   const price = bubblePrice(it.l);
   if (G.coins < price) { Snd.play('error'); toast(t('t_no_coins')); return; }
   G.coins -= price; go();
@@ -2411,8 +2514,31 @@ function grant(r, from) {
   if (r.c) { G.coins += r.c; coinShower(from.x, from.y, r.c, 0); }
   if (r.e) { G.energy += r.e; energyShower(from.x, from.y, 4); }
 }
+function buildSocial(w) {
+  const soc = Platform.social; if (!soc) return;
+  const row = (icon, title, desc, done, label, act) => {
+    const r = document.createElement('div'); r.className = 'qrow vkrow' + (done ? ' done' : '');
+    r.innerHTML = '<div class="uic">' + icon + '</div><div class="utext"><b>' + title + '</b><small>' + desc + '</small></div>';
+    const right = document.createElement('div'); right.className = 'qright';
+    if (done) right.innerHTML = ICON.tick;
+    else { const b = document.createElement('button'); b.className = 'btn blue ubuy'; b.textContent = label; b.onclick = () => { Snd.play('click'); act(elCenter(b)); }; right.appendChild(b); }
+    r.appendChild(right); w.appendChild(r);
+  };
+  const today = dayStr(0);
+  row(ICON.bell, t('vk_invite'), VK_SOCIAL_REWARDS ? t('vk_invite_d', { n: VK_INVITE_E }) : '', G.vk.inv === today, t('vk_go'), from => soc.invite().then(ok => {
+    if (!ok || G.vk.inv === dayStr(0)) return;
+    G.vk.inv = dayStr(0); if (VK_SOCIAL_REWARDS) { grant({ e: VK_INVITE_E }, from); Snd.play('reward'); }
+    saveSoon(); refreshQuests();
+  }));
+  if (!G.vk.fav) row(ICON.star, t('vk_fav'), VK_SOCIAL_REWARDS ? t('vk_fav_d', { n: VK_FAV_C }) : '', false, t('vk_add'), from => soc.favorite().then(ok => {
+    if (!ok || G.vk.fav) return;
+    G.vk.fav = 1; if (VK_SOCIAL_REWARDS) { grant({ c: VK_FAV_C }, from); Snd.play('reward'); }
+    saveSoon(); refreshQuests();
+  }));
+}
 function buildQuests() {
   const w = document.createElement('div');
+  buildSocial(w);
   const row = (icon, title, prog, goal, rw, state, onClaim) => {
     const r = document.createElement('div'); r.className = 'qrow' + (state === 'done' ? ' done' : '');
     r.innerHTML = '<div class="uic">' + icon + '</div><div class="utext"><b>' + title + '</b><div class="bbar"><i style="width:' + Math.round(100 * prog / goal) + '%"></i></div><small>' + prog + ' / ' + goal + '</small></div>';
@@ -2426,7 +2552,7 @@ function buildQuests() {
     q.ok ? 'done' : q.p >= q.g ? 'claim' : 'wait', from => { if (q.ok) return; q.ok = 1; grant(q.r, from); saveSoon(); refreshQuests(); }));
   const okN = G.q.list.filter(q => q.ok).length;
   row(ICON.chest, t('q_chest'), okN, G.q.list.length, chestReward(), G.q.ch ? 'done' : okN === G.q.list.length ? 'claim' : 'wait',
-    from => { if (G.q.ch) return; G.q.ch = 1; grant(chestReward(), from); FX.burst(from.x, from.y, '#ffcc3e', 24, 1.3); Snd.play('levelup'); saveSoon(); refreshQuests(); });
+    from => { if (G.q.ch) return; G.q.ch = 1; grant(chestReward(), from); FX.confetti(50); FX.burst(from.x, from.y, '#ffcc3e', 24, 1.3); Snd.play('levelup'); saveSoon(); refreshQuests(); });
   const d = new Date(), left = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1) - d;
   const f = document.createElement('p'); f.className = 'center small';
   f.textContent = t('quests_new', { t: Math.floor(left / 3600000) + ':' + String(Math.floor(left / 60000) % 60).padStart(2, '0') });
@@ -2592,7 +2718,7 @@ function clearTargets() {
 function adClear() {
   if (!clearTargets()) { toast(t('t_nothing_clear')); Snd.play('error'); return; }
   Platform.showRewarded(ok => {
-    if (!ok) { toast(t('t_ad_fail')); return; }
+    if (!ok) return;
     const tg = clearTargets(); if (!tg) return;
     tg.list.forEach((i, k) => setTimeout(() => {
       if (tg.type === 'crate') { if (board[i] && board[i].k === 'x') hitCrate(i, true); }
@@ -2608,7 +2734,7 @@ function adClear() {
 }
 function watchEnergy(srcEl) {
   Platform.showRewarded(ok => {
-    if (!ok) { toast(t('t_ad_fail')); return; }
+    if (!ok) return;
     if (G.energy >= energyMax()) G.eTs = Date.now();
     G.energy += AD_ENERGY;
     const p = elCenter(srcEl || el.btnEnergyAd);
@@ -2715,7 +2841,7 @@ function showLevelUp() {
   pendingLevelUp--;
   const coins = 10 * lvl, refill = G.energy < energyMax();
   const news = UPG.filter(u => u.minLvl === lvl).map(u => '<div class="news">' + t('lvl_new', { name: t('upg_' + u.id) }) + '</div>').join('');
-  Snd.play('levelup'); buzz([30, 40, 30]);
+  Snd.play('levelup'); buzz([30, 40, 30]); FX.confetti(60);
   openModal({
     title: t('lvl_title', { n: lvl }),
     html: '<div class="bigicon">' + ICON.star + '</div><p class="center">' + t('lvl_text') + '</p>' + news +
@@ -2821,7 +2947,7 @@ function buildBook() {
       const b = document.createElement('button'); b.className = 'btn yellow pulse'; b.innerHTML = t('book_claim') + ' +' + BOOK_REWARD + '<i>' + ICON.coin + '</i>';
       b.onclick = () => {
         if (G.book[c]) return;
-        G.book[c] = 1; G.coins += BOOK_REWARD; Snd.play('reward');
+        G.book[c] = 1; G.coins += BOOK_REWARD; Snd.play('reward'); FX.confetti(50);
         const p = elCenter(b); coinShower(p.x, p.y, BOOK_REWARD, 0); FX.burst(p.x, p.y, '#ffcc3e', 18, 1.2);
         toast(t('t_book', { n: BOOK_REWARD })); saveSoon(); refreshShop(true);
       };
@@ -2902,7 +3028,7 @@ function showDaily() {
     title: t('daily_title'), node: w,
     buttons: [
       { label: t('claim'), cls: 'green', act: () => claim(1) },
-      { label: ICON.play + ' ×2', cls: 'yellow', act: () => Platform.showRewarded(ok => { if (ok) claim(2); else toast(t('t_ad_fail')); }) },
+      { label: ICON.play + ' ×2', cls: 'yellow', act: () => Platform.showRewarded(ok => { if (ok) claim(2); }) },
     ],
   });
 }
@@ -3003,14 +3129,14 @@ function buildPrestige() {
   return row;
 }
 function doPrestige() {
-  const keep = { disc: G.disc, book: G.book, daily: G.daily, q: G.q, lang: G.lang, vib: G.vib, stats: G.stats, ach: G.ach, tut: G.tut, wh: G.wh, eco: G.eco, pr: G.pr + 1 };
+  const keep = { disc: G.disc, book: G.book, daily: G.daily, q: G.q, lang: G.lang, vib: G.vib, stats: G.stats, ach: G.ach, tut: G.tut, wh: G.wh, eco: G.eco, vk: G.vk, pr: G.pr + 1 };
   freshState();
   Object.assign(G, keep);
   G.tu = TUT_DONE; G.th = Math.min(THEMES.length - 1, G.pr); G.coins = 50;
   for (const sl of slots) if (sl.o) sl.o.reward = Math.round(sl.o.reward * coinMult());
   selected = -1; dispCoins = G.coins; pendingLevelUp = 0;
   buildBg(); changed(); updateGift(); saveNow(true);
-  Snd.play('levelup'); buzz([40, 60, 40]);
+  Snd.play('levelup'); buzz([40, 60, 40]); FX.confetti(80);
   FX.burst(L.W / 2, L.H * 0.45, '#ffcc3e', 30, 1.6);
   const name = t('theme_' + G.th);
   openModal({ title: t('pr_done_title', { name }), html: '<div class="bigicon">' + ICON.house + '</div><p class="center">' + t('pr_done_text', { p: Math.round(PRESTIGE_BONUS * 100 * G.pr) }) + '</p>',
@@ -3063,7 +3189,7 @@ function showAway() {
     html: '<div class="bigicon">' + ICON.house + '</div><p class="center">' + t('away_text', { h: t('hours', { h: hh, m: mm }) }) + '</p><div class="rew"><span>+' + coins + ICON.coin + '</span></div>',
     buttons: [
       { label: t('claim'), cls: 'green', act: () => claim(1) },
-      { label: ICON.play + ' ×2', cls: 'yellow', act: () => Platform.showRewarded(ok => { if (ok) claim(2); else toast(t('t_ad_fail')); }) },
+      { label: ICON.play + ' ×2', cls: 'yellow', act: () => Platform.showRewarded(ok => { if (ok) claim(2); }) },
     ],
   });
 }
@@ -3147,12 +3273,13 @@ function spinWheel(cv, img, bt) {
       if (prize.i) grantDaily({ i: prize.i }, 1, from); else grant(prize, from);
       Snd.play('reward'); buzz(25);
       FX.burst(from.x, from.y, '#ffcc3e', 22, 1.3);
+      if ((prize.c || 0) >= 100 || (prize.e || 0) >= 35) FX.confetti(50);
       toast(prize.i ? t('t_daily_place') : prize.c ? t('t_coins_add', { n: prize.c }) : t('t_energy_add', { n: prize.e }));
       saveSoon(); refreshQuests();
     };
     requestAnimationFrame(anim);
   };
-  if (free) go(); else Platform.showRewarded(ok => ok ? go() : toast(t('t_ad_fail')));
+  if (free) go(); else Platform.showRewarded(ok => ok && go());
 }
 function buildSettings() {
   const w = document.createElement('div');
@@ -3344,7 +3471,7 @@ function cardTap(s, badge) {
   const sl = slots[s], o = sl.o;
   if (!o || sl.state === 'out') return;
   if (o.ready) {
-    if (badge) Platform.showRewarded(ok => { if (ok) deliver(s, 2); else toast(t('t_ad_fail')); });
+    if (badge) Platform.showRewarded(ok => { if (ok) deliver(s, 2); });
     else deliver(s, 1);
   } else {
     Snd.play('tap');
@@ -3615,16 +3742,24 @@ function drawBoard(now, dt) {
     }
     else {
       drawImg(SPR.get('i:' + it.c + ':' + it.l), x, y, isz * s);
+      if (it.l >= 5) {
+        const ph = (now * 0.00045 + i * 0.37) % 1;
+        if (ph < 0.09) { const k = Math.sin(ph / 0.09 * Math.PI); drawImg(USPR.get('spark'), x + cs * 0.22, y - cs * 0.22, cs * 0.42 * k); }
+      }
       if (needed.has(itemKey(it.c, it.l))) drawImg(USPR.get('tick'), x + cs * 0.33, y - cs * 0.33, cs * 0.3);
     }
   }
   // dragged item on top
   if (dragging && dragIt) {
     const x = press.x, y = press.y - cs * 0.25;
+    const vx = x - (press.lx === undefined ? x : press.lx); press.lx = x;
+    press.rot = lerp(press.rot || 0, clamp(vx * 0.035, -0.45, 0.45), 0.25);
+    if (Math.abs(vx) + Math.abs(press.y - (press.ly || press.y)) > 3 && !G.eco && (frameNo & 1)) FX.trail(x, y);
+    press.ly = press.y;
     ell(g, x, y + cs * 0.42, cs * 0.34, cs * 0.1); g.fillStyle = 'rgba(61,36,18,0.25)'; g.fill();
     const s = cs * 1.15;
     if (dragIt.k === 'g') drawGen(dragIt, x, y, s, now, dt);
-    else drawImg(SPR.get('i:' + dragIt.c + ':' + dragIt.l), x, y, s);
+    else { g.save(); g.translate(x, y); g.rotate(press.rot); drawImg(SPR.get('i:' + dragIt.c + ':' + dragIt.l), 0, 0, s); g.restore(); }
   }
 }
 const amb = [];
