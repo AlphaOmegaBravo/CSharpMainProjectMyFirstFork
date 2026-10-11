@@ -135,6 +135,18 @@ svg{display:block}
 
 .vkrow{background:#eef5ff}
 
+.tabs.t4 .tab{font-size:.7em}
+.tab.evtab{background:#ffd9a8}
+.tab.evtab.on{background:#ff8c1a}
+.evban{display:flex;align-items:center;gap:.6em;border:.15em solid var(--ink);border-radius:.9em;padding:.5em .6em;margin-bottom:.5em;background:linear-gradient(#ffe2b8,#ffb46b)}
+.evban.newyear{background:linear-gradient(#e6f2ff,#a9d0f5)}
+.evban canvas{width:3.6em;height:3.6em;flex:none}
+.evban b{display:block;font-size:1.1em}.evban small{display:block;font-size:.78em}
+.evprog{margin:.2em 0 .6em}.evprog b{display:block;margin-bottom:.25em}
+.weekcard{display:flex;flex-wrap:wrap;align-items:center;gap:.5em;padding:.5em;border:.15em solid var(--ink);border-radius:.85em;background:linear-gradient(#fff6d0,#ffe9a8);margin-bottom:.6em}
+.weekcard .utext b{display:flex;align-items:center;gap:.2em}.weekcard .utext b svg{width:1.2em;height:1.2em}
+.weekbtns{display:flex;gap:.4em;width:100%}.weekbtns .btn{flex:1}
+
 /* Toast */
 #toast{position:absolute;left:50%;top:30%;z-index:25;transform:translate(-50%,0) scale(.9);background:rgba(61,36,18,.93);color:#fff;font-weight:800;padding:.55em 1.1em;border-radius:1.2em;font-size:.9em;pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;max-width:88%;text-align:center;line-height:1.25}
 #toast.show{opacity:1;transform:translate(-50%,0) scale(1)}
@@ -244,7 +256,7 @@ svg{display:block}
 /* =====================================================================
    1. CONFIG
    ===================================================================== */
-const VERSION = '0.8';
+const VERSION = '0.9';
 const COLS = 7, ROWS = 9, N = COLS * ROWS;
 const OUT = '#3d2412';
 const FONT = '"Nunito","Varela Round","Arial Rounded MT Bold","Trebuchet MS",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
@@ -254,8 +266,13 @@ const CHAINS = {
   fruit: { max: 8, color: '#e8453c', gen: [3, 5] },
   coffee: { max: 8, color: '#9a6235', gen: [1, 3] },
   ice: { max: 8, color: '#8fd8ff', gen: [1, 1] },
+  choco: { max: 8, color: '#7a4127', gen: [1, 5] },
+  pizza: { max: 8, color: '#e8584a', gen: [4, 3] },
+  pumpkin: { max: 8, color: '#ff8c1a', gen: [0, 3], ev: 'halloween' },
+  ginger: { max: 8, color: '#c97a3a', gen: [0, 3], ev: 'newyear' },
 };
-const CHAIN_IDS = ['bread', 'cake', 'fruit', 'coffee', 'ice'];
+const CHAIN_IDS = ['bread', 'cake', 'fruit', 'coffee', 'ice', 'choco', 'pizza'];   // permanent chains
+const EVENT_CHAINS = ['pumpkin', 'ginger'];
 const BASE_ENERGY = 40;
 const REGEN_SEC = [30, 26, 22, 18, 15, 12];
 const LUCK_BASE = 5, LUCK_STEP = 6;
@@ -269,6 +286,8 @@ const UPG = [
   { id: 'fruit',  cost: [250], chain: true, minLvl: 3 },
   { id: 'coffee', cost: [600], chain: true, minLvl: 5 },
   { id: 'ice',    cost: [1500], chain: true, minLvl: 8 },
+  { id: 'choco',  cost: [2200], chain: true, minLvl: 10 },
+  { id: 'pizza',  cost: [3500], chain: true, minLvl: 12 },
 ];
 const HINT_DELAY = 6500;
 const TUT_DONE = 9;
@@ -289,6 +308,15 @@ const WHEEL = [{ c: 20, w: 20 }, { e: 10, w: 18 }, { c: 50, w: 12 }, { e: 20, w:
 const WHEEL_ADS = 3;
 // VK social rewards: check the current VK Games rules before release; set to false to keep buttons without rewards
 const VK_SOCIAL_REWARDS = true, VK_INVITE_E = 20, VK_FAV_C = 100;
+// optional server that reports weekly scores to VK (secure.addAppEvent) so friends see them; see server/vk-score.js
+const VK_SCORE_URL = '';
+// seasonal events: dates are [month, day], inclusive; ?event=halloween forces one for testing
+const EVENTS = [
+  { id: 'halloween', chain: 'pumpkin', song: 5, from: [10, 20], to: [11, 5] },
+  { id: 'newyear', chain: 'ginger', song: 6, from: [12, 15], to: [1, 15] },
+];
+const EV_TRACK = [{ p: 10, r: { c: 60 } }, { p: 30, r: { e: 30 } }, { p: 60, r: { c: 200 } }, { p: 100, r: { e: 50 } }, { p: 160, r: { c: 600, e: 50 } }];
+const EV_ORDER_CHANCE = 0.4;
 const OFFLINE_MIN_MS = 30 * 60000, OFFLINE_CAP_H = 8;
 // bakery locations (prestige): wall gradient, wallpaper, awning stripes, tiles, frame, counter, page bg, pattern shape
 const THEMES = [
@@ -418,6 +446,15 @@ const I18N = {
     host_lvl1: 'Ты настоящий мастер!', host_lvl2: 'Пекарня процветает, гостей всё больше!', host_lvl3: 'Чую запах успеха… и булочек!',
     host_back: 'С возвращением! Я скучала и кое-что испекла.',
     host_prestige: 'Новая пекарня, новые гости! Вперёд!',
+    host_event: 'Ура, {name}! Печём праздничные угощения, гости их обожают!',
+    gen_choco: 'Шоколадный котёл', gen_pizza: 'Печь для пиццы', gen_pumpkin: 'Тыквенная грядка', gen_ginger: 'Праздничная ёлка',
+    upg_choco: 'Шоколадница', upg_choco_d: 'Котёл: какао → плитки → торт «Захер»', upg_pizza: 'Пиццерия', upg_pizza_d: 'Печь: томаты → сыр → королевская пицца',
+    chain_choco: 'Шоколадница', chain_pizza: 'Пиццерия', chain_pumpkin: 'Тыквенная лавка', chain_ginger: 'Пряничный домик',
+    ev_halloween: 'Хэллоуин', ev_newyear: 'Новый год', ev_desc: 'Выполняй праздничные заказы и копи очки праздника!', ev_left: 'Осталось дней: {d}',
+    ev_pts: 'Очки праздника: {n}', ev_pts_short: 'очков', t_ev_pts: '+{n} очков праздника',
+    ev_end_title: 'Праздник закончился', ev_end_text: 'Праздничные угощения раскупили: +{n} монет. До встречи в следующем году!',
+    week_title: 'Моя неделя', week_text: 'Монеты за заказы с понедельника', week_best: 'Рекорд: {n}', week_last: 'прошлая: {n}',
+    week_friends: 'Друзья', week_share: 'Похвастаться', week_post: 'Моя пекарня заработала {n} монет за неделю! Сможешь больше?',
     vk_invite: 'Позови друзей в пекарню', vk_invite_d: 'Раз в день: +{n} энергии', vk_fav: 'Добавь игру в избранное', vk_fav_d: 'Один раз: +{n} монет', vk_go: 'Позвать', vk_add: 'Добавить',
     eco: 'Экономия заряда', t_coins_add: '+{n} монет!',
     vibration: 'Вибрация', quests_locked: 'Задания откроются после обучения', lvl_new: 'Новое в магазине: {name}!', max: 'макс.',
@@ -428,6 +465,10 @@ const I18N = {
       fruit: ['Вишня', 'Яблоко', 'Корзинка фруктов', 'Джем', 'Тарталетка', 'Пирог', 'Рулет с джемом', 'Королевский пирог'],
       coffee: ['Кофейные зёрна', 'Молотый кофе', 'Эспрессо', 'Капучино', 'Латте', 'Мокко', 'Фраппе', 'Золотой кофейник'],
       ice: ['Молоко', 'Шарик пломбира', 'Рожок', 'Эскимо', 'Двойной рожок', 'Сандей', 'Банановый сплит', 'Торт-мороженое'],
+      choco: ['Какао-бобы', 'Какао', 'Плитка шоколада', 'Конфета', 'Трюфели', 'Брауни', 'Шоколадный фонтан', 'Торт «Захер»'],
+      pizza: ['Помидор', 'Сыр', 'Тесто для пиццы', 'Томатный соус', 'Кусочек пиццы', 'Мини-пицца', 'Пицца пепперони', 'Королевская пицца'],
+      pumpkin: ['Тыквенные семечки', 'Тыковка', 'Большая тыква', 'Тыквенное пюре', 'Тыквенный маффин', 'Тыквенный пирог', 'Светильник Джека', 'Тыква-ведьма'],
+      ginger: ['Имбирь', 'Пряное тесто', 'Пряник-звёздочка', 'Пряничный человечек', 'Леденец-трость', 'Пряничный домик', 'Пряничная ёлка', 'Новогодний торт'],
     },
   },
   en: {
@@ -510,6 +551,15 @@ const I18N = {
     host_lvl1: 'You\u2019re a true master!', host_lvl2: 'The bakery is thriving!', host_lvl3: 'I smell success… and buns!',
     host_back: 'Welcome back! I missed you and baked something.',
     host_prestige: 'A new bakery, new guests! Let\u2019s go!',
+    host_event: 'Hooray, it\u2019s {name}! Let\u2019s bake holiday treats, guests love them!',
+    gen_choco: 'Chocolate Pot', gen_pizza: 'Pizza Oven', gen_pumpkin: 'Pumpkin Patch', gen_ginger: 'Holiday Tree',
+    upg_choco: 'Chocolatier', upg_choco_d: 'Pot: cocoa → bars → Sacher cake', upg_pizza: 'Pizzeria', upg_pizza_d: 'Oven: tomatoes → cheese → royal pizza',
+    chain_choco: 'Chocolatier', chain_pizza: 'Pizzeria', chain_pumpkin: 'Pumpkin Shop', chain_ginger: 'Gingerbread House',
+    ev_halloween: 'Halloween', ev_newyear: 'New Year', ev_desc: 'Complete holiday orders and collect holiday points!', ev_left: 'Days left: {d}',
+    ev_pts: 'Holiday points: {n}', ev_pts_short: 'points', t_ev_pts: '+{n} holiday points',
+    ev_end_title: 'The holiday is over', ev_end_text: 'Holiday treats sold out: +{n} coins. See you next year!',
+    week_title: 'My week', week_text: 'Coins from orders since Monday', week_best: 'Best: {n}', week_last: 'last: {n}',
+    week_friends: 'Friends', week_share: 'Share', week_post: 'My bakery earned {n} coins this week! Can you beat it?',
     vk_invite: 'Invite friends to the bakery', vk_invite_d: 'Once a day: +{n} energy', vk_fav: 'Add the game to favorites', vk_fav_d: 'Once: +{n} coins', vk_go: 'Invite', vk_add: 'Add',
     eco: 'Battery saver', t_coins_add: '+{n} coins!',
     vibration: 'Vibration', quests_locked: 'Tasks unlock after the tutorial', lvl_new: 'New in the shop: {name}!', max: 'max',
@@ -520,6 +570,10 @@ const I18N = {
       fruit: ['Cherries', 'Apple', 'Fruit Basket', 'Jam', 'Tartlet', 'Pie', 'Jam Roll', 'Royal Pie'],
       coffee: ['Coffee Beans', 'Ground Coffee', 'Espresso', 'Cappuccino', 'Latte', 'Mocha', 'Frappe', 'Golden Coffee Pot'],
       ice: ['Milk', 'Ice Cream Scoop', 'Ice Cream Cone', 'Popsicle', 'Double Cone', 'Sundae', 'Banana Split', 'Ice Cream Cake'],
+      choco: ['Cocoa Pod', 'Cocoa Powder', 'Chocolate Bar', 'Bonbon', 'Truffles', 'Brownies', 'Chocolate Fountain', 'Sacher Cake'],
+      pizza: ['Tomato', 'Cheese', 'Pizza Dough', 'Tomato Sauce', 'Pizza Slice', 'Mini Pizza', 'Pepperoni Pizza', 'Royal Pizza'],
+      pumpkin: ['Pumpkin Seeds', 'Little Pumpkin', 'Big Pumpkin', 'Pumpkin Puree', 'Pumpkin Muffin', 'Pumpkin Pie', 'Jack-o\u2019-Lantern', 'Witch Pumpkin'],
+      ginger: ['Ginger Root', 'Spice Dough', 'Star Cookie', 'Gingerbread Man', 'Candy Cane', 'Gingerbread House', 'Gingerbread Tree', 'New Year Cake'],
     },
   },
 };
@@ -680,6 +734,8 @@ const Platform = (() => {
       social: {
         invite: () => send('VKWebAppShowInviteBox').then(() => true).catch(() => false),
         favorite: () => send('VKWebAppAddToFavorites').then(d => !!(d && d.result)).catch(() => false),
+        leaderboard: n => send('VKWebAppShowLeaderBoardBox', { user_result: Math.round(n) }).catch(() => {}),
+        post: msg => send('VKWebAppShowWallPostBox', { message: msg, attachments: 'https://vk.com/app' + (vkParams.get('vk_app_id') || '') }).catch(() => {}),
       },
       haptic: () => send('VKWebAppTapticImpactOccurred', { style: 'light' }).catch(() => {}),
     };
@@ -1531,7 +1587,275 @@ const ICE = [
     hl(g, 22, 66, 2.5, 8, 0, 0.6);
   },
 ];
-const ITEM_ART = { bread: BREAD, cake: CAKE, fruit: FRUIT, coffee: COFFEE, ice: ICE };
+/* ---------- Chocolate chain ---------- */
+const CHOCO = [
+  function cocoaPod(g) {
+    shadow(g, 50, 88, 30, 5);
+    g.save(); g.translate(50, 52); g.rotate(-0.5);
+    ell(g, 0, 0, 22, 34); fs(g, rgd(g, 0, -4, 36, '#f5a54a', '#a8521c'));
+    for (const x of [-11, 0, 11]) { g.beginPath(); g.moveTo(x, -30 + Math.abs(x)); g.quadraticCurveTo(x * 1.25, 0, x, 30 - Math.abs(x)); g.lineWidth = 2.4; g.strokeStyle = 'rgba(61,36,18,0.45)'; g.stroke(); }
+    hl(g, -9, -14, 4, 10, 0.1, 0.5);
+    g.restore();
+    bean(g, 74, 76, 0.6, 0.55); bean(g, 82, 64, -0.2, 0.5);
+  },
+  function cocoaPowder(g) {
+    shadow(g, 50, 91, 34, 6);
+    bowlBack(g, 50, 58, 36, 10, '#d9a066', '#5a2e16');
+    g.beginPath(); g.moveTo(22, 62); g.quadraticCurveTo(50, 28, 78, 62); g.closePath(); fs(g, lg(g, 0, 36, 0, 62, '#8a5232', '#5a2e16'), 3.5);
+    g.fillStyle = 'rgba(255,220,180,0.4)'; for (const [x, y] of [[44, 46], [52, 42], [58, 50], [40, 54]]) { circ(g, x, y, 1.4); g.fill(); }
+    g.save(); g.translate(70, 34); g.rotate(0.7); rr(g, -3, -24, 6, 30, 3); fs(g, '#e8c18a', 3); ell(g, 0, 8, 7, 5); fs(g, '#e8c18a', 3); g.restore();
+    bowlFront(g, 50, 58, 36, 10, 30, '#e3a86b', '#a9652f');
+  },
+  function bar(g) {
+    shadow(g, 50, 86, 34, 6);
+    g.save(); g.translate(50, 52); g.rotate(-0.18);
+    rr(g, -34, -26, 68, 52, 5); fs(g, lg(g, 0, -26, 0, 26, '#8a4a2c', '#5a2c18'));
+    g.lineWidth = 2.4; g.strokeStyle = 'rgba(30,12,4,0.55)';
+    for (const x of [-11, 11]) { g.beginPath(); g.moveTo(x, -24); g.lineTo(x, 24); g.stroke(); }
+    g.beginPath(); g.moveTo(-32, 0); g.lineTo(32, 0); g.stroke();
+    for (const [x, y] of [[-22, -12], [0, -12], [22, -12], [-22, 12], [0, 12]]) hl(g, x - 4, y - 5, 4, 1.6, 0, 0.35);
+    g.beginPath(); g.moveTo(10, 8); g.lineTo(34, 8); g.lineTo(34, 30); g.lineTo(6, 30); g.closePath(); fs(g, '#e8453c', 3.5);
+    rr(g, 10, 14, 22, 6, 2); g.fillStyle = '#ffcc3e'; g.fill();
+    g.restore();
+  },
+  function bonbon(g) {
+    shadow(g, 50, 82, 36, 5);
+    const wr = lg(g, 0, 36, 0, 70, '#ff9dba', '#e5577f');
+    g.beginPath(); g.moveTo(32, 52); g.lineTo(10, 36); g.lineTo(14, 52); g.lineTo(8, 68); g.closePath(); fs(g, wr, 4);
+    g.beginPath(); g.moveTo(68, 52); g.lineTo(90, 36); g.lineTo(86, 52); g.lineTo(92, 68); g.closePath(); fs(g, wr, 4);
+    ell(g, 50, 52, 22, 17); fs(g, rgd(g, 50, 50, 24, '#ffc1d4', '#e5577f'));
+    g.save(); ell(g, 50, 52, 22, 17); g.clip(); g.fillStyle = 'rgba(255,255,255,0.75)'; for (let x = 28; x < 76; x += 10) { g.save(); g.translate(x, 52); g.rotate(0.6); g.fillRect(-2, -26, 4, 52); g.restore(); } g.restore();
+    ell(g, 50, 52, 22, 17); st(g, 4);
+    hl(g, 42, 44, 6, 3, -0.4, 0.8);
+  },
+  function truffles(g) {
+    shadow(g, 50, 90, 38, 6);
+    g.beginPath(); g.moveTo(50, 90); g.bezierCurveTo(8, 66, 6, 30, 28, 28); g.bezierCurveTo(40, 26, 47, 34, 50, 40); g.bezierCurveTo(53, 34, 60, 26, 72, 28); g.bezierCurveTo(94, 30, 92, 66, 50, 90); g.closePath();
+    fs(g, lg(g, 0, 28, 0, 90, '#ff5c7a', '#b3183a'));
+    g.beginPath(); g.moveTo(50, 80); g.bezierCurveTo(18, 62, 17, 38, 30, 37); g.bezierCurveTo(40, 36, 46, 42, 50, 48); g.bezierCurveTo(54, 42, 60, 36, 70, 37); g.bezierCurveTo(83, 38, 82, 62, 50, 80); g.closePath(); fs(g, '#fff1d6', 3);
+    for (const [x, y, c] of [[36, 50, '#6b3420'], [64, 50, '#8a4a2c'], [50, 64, '#5a2c18']]) { circ(g, x, y, 9); fs(g, rgd(g, x, y, 10, '#a86a43', c), 3); g.fillStyle = 'rgba(255,240,220,0.6)'; for (let k = 0; k < 4; k++) { circ(g, x - 4 + k * 2.6, y - 3 + (k % 2) * 3, 0.9); g.fill(); } }
+  },
+  function brownie(g) {
+    shadow(g, 50, 89, 36, 6);
+    const block = (x, y, w, h) => {
+      g.beginPath(); g.moveTo(x, y + 6); g.lineTo(x + 10, y); g.lineTo(x + w + 10, y); g.lineTo(x + w, y + 6); g.closePath(); fs(g, '#8a4a2c', 3);
+      rr(g, x, y + 6, w, h, 2); fs(g, lg(g, 0, y + 6, 0, y + 6 + h, '#6b3420', '#4a2412'), 3.5);
+      g.beginPath(); g.moveTo(x + w, y + 6); g.lineTo(x + w + 10, y); g.lineTo(x + w + 10, y + h); g.lineTo(x + w, y + 6 + h); g.closePath(); fs(g, '#4a2412', 3);
+    };
+    block(16, 62, 56, 20); block(22, 40, 50, 20);
+    strokeLine(g, [32, 44, 44, 42, 50, 46], 2, 'rgba(255,220,180,0.6)');
+    g.fillStyle = '#fffaf4'; for (const [x, y] of [[36, 42], [46, 41], [56, 43], [62, 41], [41, 45]]) { circ(g, x, y, 1.5); g.fill(); }
+    strawberry(g, 54, 32, 0.75);
+  },
+  function fountain(g) {
+    shadow(g, 50, 92, 32, 5);
+    rr(g, 46, 18, 8, 64, 3); fs(g, '#d9e2ea', 3);
+    for (const [y, rx] of [[80, 32], [56, 22], [34, 13]]) { ell(g, 50, y, rx, rx * 0.28); fs(g, '#cfd8e0', 3.5); ell(g, 50, y - 1, rx - 3, rx * 0.2); g.fillStyle = '#6b3420'; g.fill(); }
+    g.fillStyle = '#7a4127';
+    for (const [y, rx] of [[34, 13], [56, 22]]) { g.beginPath(); g.moveTo(50 - rx, y); g.quadraticCurveTo(50 - rx - 3, y + 12, 50 - rx + 2, y + 20); g.lineTo(50 + rx - 2, y + 20); g.quadraticCurveTo(50 + rx + 3, y + 12, 50 + rx, y); g.closePath(); g.fill(); }
+    circ(g, 50, 16, 5); fs(g, '#6b3420', 3);
+    g.save(); g.translate(80, 50); g.rotate(0.5); strokeLine(g, [0, -26, 0, 20], 3, '#e8c18a'); g.restore();
+    strawberry(g, 76, 40, 0.7); hl(g, 40, 56, 3, 4, 0, 0.5);
+  },
+  function sacher(g) {
+    shadow(g, 50, 91, 39, 6);
+    cylinder(g, 50, 46, 36, 12, 34, lg(g, 14, 0, 86, 0, '#6b3420', '#3d1d0e'), '#5a2c18');
+    g.beginPath(); g.moveTo(14, 46); g.ellipse(50, 46, 36, 12, 0, Math.PI, 0, true);
+    for (const [x, d] of [[78, 8], [64, 12], [50, 7], [36, 11], [22, 6]]) { const y = 46 + 12 * Math.sqrt(Math.max(0, 1 - Math.pow((x - 50) / 36, 2))); g.quadraticCurveTo(x + 6, y + d + 4, x, y); }
+    g.closePath(); fs(g, '#4a2412', 3);
+    ell(g, 50, 46, 36, 12); st(g);
+    hl(g, 36, 41, 12, 3, -0.1, 0.35);
+    g.font = '900 16px serif'; g.textAlign = 'center'; g.fillStyle = '#ffd75a'; g.fillText('S', 50, 52);
+    star(g, 30, 40, 4, '#ffd75a'); star(g, 70, 40, 4, '#ffd75a');
+  },
+];
+/* ---------- Pizza chain ---------- */
+const PIZZA = [
+  function tomato(g) {
+    shadow(g, 50, 88, 30, 6);
+    ell(g, 50, 56, 32, 28); fs(g, rgd(g, 50, 54, 36, '#ff6a5c', '#c4182c'));
+    g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 5 : 14; g.lineTo(50 + Math.cos(a) * r, 31 + Math.sin(a) * r * 0.6); } g.closePath(); fs(g, '#5cb85c', 3);
+    strokeLine(g, [50, 28, 52, 20], 4.5); strokeLine(g, [50, 28, 52, 20], 2, '#6cc04a');
+    hl(g, 36, 44, 6, 9, 0.5, 0.7);
+  },
+  function cheese(g) {
+    shadow(g, 50, 86, 36, 6);
+    g.beginPath(); g.moveTo(12, 70); g.lineTo(86, 46); g.lineTo(88, 76); g.lineTo(14, 84); g.closePath(); fs(g, lg(g, 0, 50, 0, 84, '#ffd84a', '#f0a81a'));
+    g.beginPath(); g.moveTo(12, 70); g.lineTo(60, 26); g.lineTo(86, 46); g.closePath(); fs(g, '#ffe680');
+    for (const [x, y, r] of [[30, 76, 4], [50, 70, 3], [70, 66, 4.5], [62, 76, 2.5], [56, 40, 3], [44, 52, 2.5]]) { ell(g, x, y, r, r * 0.8); fs(g, '#e8a018', 2.2); }
+    hl(g, 52, 34, 8, 2, -0.8, 0.6);
+  },
+  function pizzaDough(g) {
+    shadow(g, 50, 84, 38, 6);
+    ell(g, 46, 64, 36, 16); fs(g, lg(g, 0, 48, 0, 80, '#fff4dc', '#f0d39c'));
+    ell(g, 46, 62, 28, 11); g.lineWidth = 2; g.strokeStyle = 'rgba(200,150,80,0.6)'; g.stroke();
+    g.save(); g.translate(62, 38); g.rotate(-0.45);
+    rr(g, -30, -7, 60, 14, 7); fs(g, lg(g, 0, -7, 0, 7, '#f0c48a', '#c98a4b'));
+    rr(g, -40, -3, 12, 6, 3); fs(g, '#a65e2e', 3); rr(g, 28, -3, 12, 6, 3); fs(g, '#a65e2e', 3);
+    g.restore();
+    g.fillStyle = 'rgba(255,255,255,0.9)'; for (const [x, y] of [[24, 56], [34, 70], [62, 70], [20, 66]]) { circ(g, x, y, 1.8); g.fill(); }
+  },
+  function sauce(g) {
+    shadow(g, 50, 91, 34, 6);
+    bowlBack(g, 50, 58, 36, 10, '#fff4e6', '#d62f2f');
+    g.beginPath(); g.moveTo(26, 58); g.quadraticCurveTo(40, 52, 50, 58); g.quadraticCurveTo(60, 62, 74, 56); g.lineWidth = 2.5; g.strokeStyle = '#a81c1c'; g.stroke();
+    leaf(g, 46, 52, 60, 46, 4, '#3fa34d'); leaf(g, 52, 56, 40, 48, 3.5, '#3fa34d');
+    bowlFront(g, 50, 58, 36, 10, 30, '#ffffff', '#cfd8e0');
+    strokeLine(g, [20, 72, 80, 72], 3, '#e8453c');
+  },
+  function slice(g) {
+    shadow(g, 50, 89, 32, 6);
+    g.beginPath(); g.moveTo(50, 90); g.lineTo(16, 26); g.quadraticCurveTo(50, 12, 84, 26); g.closePath(); fs(g, '#ffd75a');
+    g.beginPath(); g.moveTo(16, 26); g.quadraticCurveTo(50, 12, 84, 26); g.lineTo(82, 34); g.quadraticCurveTo(50, 20, 18, 34); g.closePath(); fs(g, lg(g, 0, 16, 0, 34, '#f2b866', '#c97a33'), 3.5);
+    for (const [x, y] of [[40, 42], [60, 46], [50, 64]]) { circ(g, x, y, 7); fs(g, rgd(g, x, y, 8, '#ff6a5c', '#b3183a'), 2.5); }
+    g.beginPath(); g.moveTo(44, 78); g.quadraticCurveTo(46, 88, 49, 84); st(g, 0); g.fillStyle = '#ffd75a'; g.fill();
+    leaf(g, 64, 58, 72, 52, 3, '#3fa34d');
+  },
+  function miniPizza(g) {
+    shadow(g, 50, 86, 34, 6);
+    ell(g, 50, 60, 34, 22); fs(g, lg(g, 0, 38, 0, 82, '#f2b866', '#c97a33'));
+    ell(g, 50, 58, 27, 16); fs(g, '#ffd75a', 3);
+    g.save(); ell(g, 50, 58, 27, 16); g.clip(); g.fillStyle = 'rgba(214,47,47,0.35)'; ell(g, 52, 60, 22, 12); g.fill(); g.restore();
+    for (const [x, y] of [[42, 54], [58, 56], [50, 64], [62, 64]]) { ell(g, x, y, 4, 3); fs(g, '#fff4e6', 2); }
+    leaf(g, 38, 60, 46, 66, 3, '#3fa34d'); leaf(g, 56, 50, 64, 48, 3, '#3fa34d');
+  },
+  function pepperoni(g) {
+    shadow(g, 50, 89, 40, 6);
+    rr(g, 76, 58, 18, 8, 3); fs(g, '#c98a4b', 3);
+    ell(g, 46, 60, 40, 24); fs(g, '#d9a066', 4); ell(g, 46, 58, 36, 20); fs(g, lg(g, 0, 38, 0, 78, '#f7c06d', '#cf8a3a'));
+    ell(g, 46, 57, 30, 15); fs(g, '#ffd24a', 3);
+    for (const [x, y] of [[32, 54], [46, 50], [60, 54], [38, 64], [54, 64], [46, 58]]) { ell(g, x, y, 5.5, 3.8); fs(g, '#c42a2a', 2); }
+    g.fillStyle = OUT; for (const [x, y] of [[40, 58], [52, 52], [58, 61]]) { circ(g, x, y, 1.6); g.fill(); }
+    strokeLine(g, [46, 34, 46, 38], 1); hl(g, 26, 52, 4, 1.5, -0.3, 0.6);
+  },
+  function royalPizza(g) {
+    shadow(g, 50, 90, 40, 6);
+    ell(g, 50, 62, 40, 24); fs(g, lg(g, 0, 38, 0, 86, '#ffd27a', '#d98a2b'));
+    ell(g, 50, 60, 33, 18); fs(g, '#fff0b0', 3);
+    g.save(); ell(g, 50, 60, 33, 18); g.clip(); g.fillStyle = 'rgba(214,47,47,0.3)'; ell(g, 50, 62, 30, 15); g.fill(); g.restore();
+    for (const [x, y] of [[36, 56], [62, 56], [50, 66], [40, 66], [62, 66]]) { circ(g, x, y, 4.5); fs(g, rgd(g, x, y, 5, '#ff7a6b', '#c4182c'), 2); }
+    for (const [x, y, r] of [[48, 54, 0.4], [54, 62, -0.6], [30, 62, 1]]) { g.save(); g.translate(x, y); g.rotate(r); leaf(g, -5, 0, 5, 0, 3, '#3fa34d'); g.restore(); }
+    steam(g, [38, 62], 40, 18);
+  },
+];
+/* ---------- Halloween: pumpkin chain ---------- */
+function pumpkinShape(g, x, y, rx, ry, c0, c1) {
+  for (const [dx, k] of [[-0.55, 0.62], [0.55, 0.62], [0, 0.7]]) { ell(g, x + dx * rx, y, rx * k, ry); fs(g, rgd(g, x + dx * rx, y - ry * 0.3, rx, c0, c1), 4); }
+  rr(g, x - 3, y - ry - 8, 6, 11, 2); fs(g, '#6b8e23', 3);
+}
+const PUMPKIN = [
+  function seeds(g) {
+    shadow(g, 50, 86, 28, 5);
+    for (const [x, y, r] of [[30, 56, -0.6], [56, 40, 0.3], [68, 68, 1.2], [40, 76, 0.2], [52, 60, -0.2]]) { g.save(); g.translate(x, y); g.rotate(r); g.beginPath(); g.moveTo(0, -17); g.quadraticCurveTo(13, -3, 0, 17); g.quadraticCurveTo(-13, -3, 0, -17); g.closePath(); fs(g, lg(g, 0, -17, 0, 17, '#fff6dc', '#ecd08e'), 3.5); strokeLine(g, [0, -12, 0, 10], 1.5, 'rgba(160,110,40,0.5)'); g.restore(); }
+  },
+  function smallPumpkin(g) { shadow(g, 50, 86, 26, 5); pumpkinShape(g, 50, 62, 26, 22, '#ffb14a', '#e06a10'); leaf(g, 54, 38, 70, 32, 5); },
+  function bigPumpkin(g) { shadow(g, 50, 90, 36, 6); pumpkinShape(g, 50, 60, 36, 28, '#ffb14a', '#d65e0a'); leaf(g, 54, 30, 74, 22, 6); hl(g, 32, 50, 4, 9, 0.2, 0.5); },
+  function puree(g) {
+    shadow(g, 50, 91, 34, 6);
+    bowlBack(g, 50, 58, 36, 10, '#8fd0f5', '#ff9d2e');
+    g.beginPath(); g.moveTo(26, 60); g.quadraticCurveTo(50, 36, 74, 60); g.closePath(); fs(g, lg(g, 0, 40, 0, 60, '#ffb855', '#f08a1c'), 3.5);
+    strokeLine(g, [38, 52, 50, 46, 60, 52], 2.4, '#d96a0a');
+    bowlFront(g, 50, 58, 36, 10, 30, '#7cc4ef', '#3d8fd0');
+  },
+  function pumpkinMuffin(g) {
+    shadow(g, 50, 90, 27, 5);
+    g.beginPath(); g.moveTo(25, 57); g.lineTo(75, 57); g.lineTo(67, 88); g.lineTo(33, 88); g.closePath(); fs(g, lg(g, 25, 0, 75, 0, '#7a4127', '#4a2412'));
+    ell(g, 50, 55, 28, 12); fs(g, rgd(g, 50, 50, 30, '#ffc06a', '#e07a20'));
+    ell(g, 50, 46, 18, 8); fs(g, '#fff6e6', 3.5);
+    pumpkinShape(g, 50, 36, 8, 7, '#ffb14a', '#e06a10');
+    g.fillStyle = '#a65e2e'; for (const [x, y] of [[36, 52], [62, 54], [44, 58]]) { circ(g, x, y, 1.3); g.fill(); }
+  },
+  function pumpkinPie(g) {
+    shadow(g, 52, 89, 36, 6);
+    const A = [12, 60], B = [88, 52], H = 20;
+    g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.lineTo(B[0], B[1] + H); g.lineTo(A[0], A[1] + H); g.closePath(); fs(g, '#e8a04f');
+    g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(74, 30); g.lineTo(B[0], B[1]); g.closePath(); fs(g, '#f28a1c');
+    rr(g, 72, 26, 18, 30, 6); fs(g, '#e8a04f', 3.5);
+    ell(g, 50, 44, 9, 5); fs(g, '#fffaf4', 3); g.beginPath(); g.moveTo(44, 43); g.quadraticCurveTo(50, 32, 55, 42); g.closePath(); fs(g, '#fffaf4', 3);
+    g.fillStyle = '#a65e2e'; circ(g, 50, 38, 1.4); g.fill();
+  },
+  function lantern(g) {
+    const gr = g.createRadialGradient(50, 58, 4, 50, 58, 46); gr.addColorStop(0, 'rgba(255,220,90,0.6)'); gr.addColorStop(1, 'rgba(255,200,60,0)'); g.fillStyle = gr; g.fillRect(0, 0, 100, 100);
+    shadow(g, 50, 90, 36, 6); pumpkinShape(g, 50, 60, 36, 28, '#ffa83a', '#c9500a');
+    g.fillStyle = '#ffe14d'; g.strokeStyle = OUT; g.lineWidth = 3;
+    const tri = pts => { g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.closePath(); g.fill(); g.stroke(); };
+    tri([32, 54, 42, 44, 46, 56]); tri([54, 56, 58, 44, 68, 54]); tri([46, 62, 50, 58, 54, 62]);
+    tri([30, 68, 38, 76, 44, 70, 50, 78, 56, 70, 62, 76, 70, 68, 60, 82, 40, 82]);
+  },
+  function witchPumpkin(g) {
+    shadow(g, 50, 92, 38, 6); pumpkinShape(g, 50, 66, 34, 24, '#ffa83a', '#c9500a');
+    g.fillStyle = '#ffe14d'; for (const [x, y] of [[40, 62], [60, 62]]) { ell(g, x, y, 4, 5); g.fill(); st(g, 2.5); }
+    g.beginPath(); g.moveTo(40, 72); g.quadraticCurveTo(50, 80, 60, 72); g.lineWidth = 3; g.strokeStyle = OUT; g.stroke();
+    ell(g, 50, 42, 30, 7); fs(g, '#5b3a8c', 4);
+    g.beginPath(); g.moveTo(34, 40); g.lineTo(58, 6); g.quadraticCurveTo(62, 22, 66, 40); g.closePath(); fs(g, lg(g, 30, 0, 70, 0, '#7a52b3', '#4a2d7a'), 4);
+    rr(g, 35, 34, 31, 6, 2); fs(g, '#ffcc3e', 2.5); star(g, 54, 22, 4, '#ffe14d');
+  },
+];
+/* ---------- New Year: gingerbread chain ---------- */
+function icing(g, pts) { g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.lineWidth = 2.6; g.strokeStyle = '#ffffff'; g.stroke(); }
+const GINGER = [
+  function gingerRoot(g) {
+    shadow(g, 50, 84, 34, 5);
+    const c = lg(g, 0, 40, 0, 80, '#f2d39c', '#c99a5a');
+    for (const [x, y, rx, ry, r] of [[34, 64, 18, 11, -0.2], [58, 60, 16, 10, 0.3], [70, 46, 9, 13, 0.5], [46, 48, 8, 12, -0.3], [24, 54, 7, 10, -0.7]]) { ell(g, x, y, rx, ry, r); fs(g, c, 4); }
+    g.lineWidth = 1.8; g.strokeStyle = 'rgba(120,80,30,0.5)'; for (const x of [30, 40, 58, 64]) { g.beginPath(); g.moveTo(x, 58); g.lineTo(x + 2, 70); g.stroke(); }
+  },
+  function spiceDough(g) {
+    shadow(g, 50, 88, 32, 5);
+    g.beginPath(); g.moveTo(16, 80); g.bezierCurveTo(12, 44, 88, 44, 84, 80); g.closePath(); fs(g, lg(g, 0, 48, 0, 82, '#c98a4b', '#9a5e2a'));
+    hl(g, 36, 58, 8, 4, -0.4, 0.5);
+    for (const [x, r] of [[60, 0.5], [68, 0.7]]) { g.save(); g.translate(x, 44); g.rotate(r); rr(g, -4, -18, 8, 30, 3); fs(g, '#a65e2e', 3); strokeLine(g, [-2, -16, -2, 10], 1.2, 'rgba(61,36,18,0.5)'); g.restore(); }
+    star(g, 32, 40, 6, '#8a4a2c');
+  },
+  function starCookie(g) {
+    shadow(g, 50, 88, 30, 5);
+    g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 16 : 36; g.lineTo(50 + Math.cos(a) * r, 54 + Math.sin(a) * r); } g.closePath(); fs(g, lg(g, 0, 18, 0, 90, '#d99a5a', '#a8652f'));
+    g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 11 : 27; g.lineTo(50 + Math.cos(a) * r, 54 + Math.sin(a) * r); } g.closePath(); g.lineWidth = 2.6; g.strokeStyle = '#fff'; g.stroke();
+    circ(g, 50, 54, 4); fs(g, '#e8453c', 2);
+  },
+  function gingerMan(g) {
+    shadow(g, 50, 90, 26, 5);
+    const c = lg(g, 0, 10, 0, 90, '#d99a5a', '#a8652f');
+    g.beginPath(); circ(g, 50, 26, 14); fs(g, c, 0);
+    g.beginPath(); g.moveTo(36, 40); g.lineTo(64, 40); g.lineTo(82, 50); g.quadraticCurveTo(86, 58, 78, 58); g.lineTo(64, 54); g.lineTo(70, 82); g.quadraticCurveTo(70, 90, 62, 88); g.lineTo(50, 72); g.lineTo(38, 88); g.quadraticCurveTo(30, 90, 30, 82); g.lineTo(36, 54); g.lineTo(22, 58); g.quadraticCurveTo(14, 58, 18, 50); g.closePath(); fs(g, c, 0);
+    g.beginPath(); circ(g, 50, 26, 14); st(g, 4.5);
+    g.beginPath(); g.moveTo(36, 40); g.lineTo(64, 40); g.lineTo(82, 50); g.quadraticCurveTo(86, 58, 78, 58); g.lineTo(64, 54); g.lineTo(70, 82); g.quadraticCurveTo(70, 90, 62, 88); g.lineTo(50, 72); g.lineTo(38, 88); g.quadraticCurveTo(30, 90, 30, 82); g.lineTo(36, 54); g.lineTo(22, 58); g.quadraticCurveTo(14, 58, 18, 50); g.closePath(); st(g, 4.5);
+    g.fillStyle = OUT; circ(g, 45, 24, 2); g.fill(); circ(g, 55, 24, 2); g.fill();
+    g.beginPath(); g.arc(50, 28, 5, 0.2, Math.PI - 0.2); g.lineWidth = 2.2; g.strokeStyle = '#fff'; g.stroke();
+    for (const y of [48, 58]) { circ(g, 50, y, 3); fs(g, y === 48 ? '#e8453c' : '#6cc04a', 2); }
+    icing(g, [20, 52, 26, 54]); icing(g, [74, 54, 80, 52]); icing(g, [32, 84, 38, 82]); icing(g, [62, 82, 68, 84]);
+  },
+  function candyCane(g) {
+    shadow(g, 50, 90, 22, 4);
+    g.beginPath(); g.moveTo(56, 88); g.lineTo(56, 34); g.arc(44, 34, 12, 0, Math.PI, true); g.lineWidth = 15; g.strokeStyle = OUT; g.stroke(); g.lineWidth = 9; g.strokeStyle = '#ffffff'; g.stroke();
+    g.save(); g.beginPath(); g.moveTo(56, 88); g.lineTo(56, 34); g.arc(44, 34, 12, 0, Math.PI, true); g.lineWidth = 9; g.setLineDash([6, 6]); g.strokeStyle = '#e8453c'; g.stroke(); g.restore();
+    rr(g, 48, 40, 18, 7, 3); fs(g, '#6cc04a', 2.5); circ(g, 57, 43, 3.5); fs(g, '#e8453c', 2);
+  },
+  function gingerHouse(g) {
+    shadow(g, 50, 92, 38, 6);
+    rr(g, 20, 48, 60, 40, 3); fs(g, lg(g, 0, 48, 0, 88, '#d99a5a', '#a8652f'));
+    g.beginPath(); g.moveTo(12, 52); g.lineTo(50, 18); g.lineTo(88, 52); g.closePath(); fs(g, '#fff6f0');
+    icing(g, [16, 52, 22, 46, 28, 52, 34, 46, 40, 52, 46, 46, 52, 52, 58, 46, 64, 52, 70, 46, 76, 52, 82, 46]);
+    rr(g, 42, 64, 16, 24, 7); fs(g, '#8a4a2c', 3); rr(g, 26, 58, 12, 12, 2); fs(g, '#ffe27a', 3); rr(g, 62, 58, 12, 12, 2); fs(g, '#ffe27a', 3);
+    for (const [x, y, c] of [[32, 40, '#e8453c'], [50, 30, '#6cc04a'], [68, 40, '#4c9fe0']]) { circ(g, x, y, 3.5); fs(g, c, 2); }
+  },
+  function gingerTree(g) {
+    shadow(g, 50, 92, 32, 5);
+    rr(g, 44, 78, 12, 12, 2); fs(g, '#8a4a2c', 3);
+    for (const [y, w] of [[60, 34], [42, 26], [26, 18]]) { g.beginPath(); g.moveTo(50 - w, y + 18); g.lineTo(50, y - 6); g.lineTo(50 + w, y + 18); g.closePath(); fs(g, lg(g, 0, y - 6, 0, y + 18, '#d99a5a', '#a8652f')); icing(g, [50 - w + 6, y + 15, 50, y + 10, 50 + w - 6, y + 15]); }
+    for (const [x, y, c] of [[38, 70, '#e8453c'], [62, 68, '#4c9fe0'], [44, 52, '#ffcc3e'], [58, 50, '#e8453c'], [50, 36, '#6cc04a']]) { circ(g, x, y, 3.2); fs(g, c, 2); }
+    star(g, 50, 14, 9, '#ffe14d');
+  },
+  function nyCake(g) {
+    shadow(g, 50, 91, 39, 6);
+    cylinder(g, 50, 48, 36, 11, 32, lg(g, 14, 0, 86, 0, '#ffffff', '#e0e8ef'), '#ffffff');
+    for (let k = 0; k < 7; k++) { const x = 18 + k * 10.5; rr(g, x - 1.5, 60, 3, 18, 1.5); g.fillStyle = k % 2 ? '#e8453c' : '#6cc04a'; g.fill(); }
+    for (const [x, y] of [[36, 46], [62, 46]]) { leaf(g, x - 6, y, x + 2, y - 4, 3, '#2f8f3f'); leaf(g, x + 2, y, x + 9, y + 3, 3, '#2f8f3f'); cherry(g, x + 1, y + 2, 3.5); }
+    rr(g, 47, 22, 6, 22, 2); fs(g, '#ff9dba', 2.5);
+    g.beginPath(); g.moveTo(50, 12); g.quadraticCurveTo(56, 18, 50, 22); g.quadraticCurveTo(44, 18, 50, 12); g.closePath(); fs(g, '#ffcc3e', 2);
+  },
+];
+const ITEM_ART = { bread: BREAD, cake: CAKE, fruit: FRUIT, coffee: COFFEE, ice: ICE, choco: CHOCO, pizza: PIZZA, pumpkin: PUMPKIN, ginger: GINGER };
 
 /* ---------- Generators ---------- */
 const GEN_ART = {
@@ -1599,6 +1923,41 @@ const GEN_ART = {
     g.save(); g.translate(45, 65.5); g.rotate(Math.PI / 2); g.scale(0.32, 0.32); waffleCone(g, 0, -18, 30, 36); g.restore();
     strokeLine(g, [78, 60, 90, 54], 5); strokeLine(g, [78, 60, 90, 54], 2, '#cfd8e0');
     for (const x of [26, 66]) { circ(g, x, 82, 8); fs(g, '#6f7884', 4); circ(g, x, 82, 2.5); g.fillStyle = '#dfe6ee'; g.fill(); }
+  },
+  choco(g) {
+    shadow(g, 50, 92, 36, 5);
+    g.fillStyle = '#ff8c1a'; for (const [x, h] of [[38, 12], [50, 16], [62, 12]]) { g.beginPath(); g.moveTo(x - 6, 90); g.quadraticCurveTo(x, 90 - h * 2, x + 6, 90); g.closePath(); g.fill(); }
+    rr(g, 22, 84, 56, 8, 3); fs(g, '#6f7884', 3.5);
+    g.beginPath(); g.moveTo(16, 40); g.lineTo(84, 40); g.quadraticCurveTo(84, 84, 50, 84); g.quadraticCurveTo(16, 84, 16, 40); g.closePath(); fs(g, lg(g, 16, 0, 84, 0, '#e8a06a', '#a8652f'));
+    ell(g, 50, 40, 34, 9); fs(g, '#d9a066', 4); ell(g, 50, 41, 28, 6); g.fillStyle = '#5a2c18'; g.fill();
+    g.beginPath(); g.moveTo(26, 46); g.quadraticCurveTo(28, 58, 32, 50); g.moveTo(66, 46); g.quadraticCurveTo(68, 62, 72, 50); g.lineWidth = 4; g.strokeStyle = '#5a2c18'; g.stroke();
+    g.save(); g.translate(64, 26); g.rotate(0.5); rr(g, -3, -20, 6, 30, 3); fs(g, '#e8c18a', 3); g.restore();
+    hl(g, 26, 60, 3, 10, 0, 0.4);
+  },
+  pizza(g) {
+    shadow(g, 50, 92, 38, 5);
+    rr(g, 14, 76, 72, 14, 4); fs(g, '#b5a393', 3.5);
+    g.beginPath(); g.moveTo(16, 78); g.bezierCurveTo(14, 26, 86, 26, 84, 78); g.closePath(); fs(g, lg(g, 0, 30, 0, 78, '#e8b07a', '#b06a3a'));
+    g.lineWidth = 2; g.strokeStyle = 'rgba(61,36,18,0.35)'; for (const y of [48, 62]) { g.beginPath(); g.moveTo(20, y); g.lineTo(80, y); g.stroke(); }
+    g.beginPath(); g.moveTo(34, 78); g.bezierCurveTo(34, 52, 66, 52, 66, 78); g.closePath(); fs(g, '#3d2412', 3);
+    g.fillStyle = '#ff8c1a'; g.beginPath(); g.moveTo(40, 78); g.quadraticCurveTo(44, 62, 50, 70); g.quadraticCurveTo(56, 60, 60, 78); g.closePath(); g.fill();
+    g.fillStyle = '#ffe14d'; g.beginPath(); g.moveTo(45, 78); g.quadraticCurveTo(50, 68, 55, 78); g.closePath(); g.fill();
+    rr(g, 62, 16, 10, 20, 2); fs(g, '#a8652f', 3);
+  },
+  pumpkin(g) {
+    shadow(g, 50, 92, 38, 5);
+    g.beginPath(); g.moveTo(10, 86); g.bezierCurveTo(14, 64, 86, 64, 90, 86); g.closePath(); fs(g, lg(g, 0, 64, 0, 88, '#8a5a3a', '#5a3a22'));
+    g.beginPath(); g.moveTo(20, 74); g.bezierCurveTo(30, 50, 50, 70, 58, 50); g.bezierCurveTo(64, 36, 78, 40, 82, 30); g.lineWidth = 5; g.strokeStyle = OUT; g.stroke(); g.lineWidth = 2.5; g.strokeStyle = '#5cb85c'; g.stroke();
+    leaf(g, 30, 64, 20, 50, 6); leaf(g, 66, 46, 78, 54, 6); leaf(g, 76, 34, 88, 24, 5);
+    pumpkinShape(g, 42, 70, 18, 14, '#ffb14a', '#e06a10');
+  },
+  ginger(g) {
+    shadow(g, 50, 93, 32, 5);
+    rr(g, 44, 80, 12, 12, 2); fs(g, '#8a4a2c', 3);
+    for (const [y, w] of [[62, 34], [44, 27], [28, 19]]) { g.beginPath(); g.moveTo(50 - w, y + 18); g.lineTo(50, y - 8); g.lineTo(50 + w, y + 18); g.closePath(); fs(g, lg(g, 0, y - 8, 0, y + 18, '#4fae54', '#2c7a3a')); }
+    for (const [x, y, c] of [[36, 74, '#e8453c'], [64, 72, '#ffcc3e'], [42, 56, '#4c9fe0'], [60, 54, '#ff7aa2'], [50, 38, '#e8453c']]) { circ(g, x, y, 4); fs(g, c, 2.4); }
+    star(g, 50, 14, 10, '#ffe14d');
+    rr(g, 64, 80, 16, 12, 2); fs(g, '#ff7aa2', 3); rr(g, 70, 80, 4, 12, 0); g.fillStyle = '#ffcc3e'; g.fill();
   },
 };
 function millBlades(g) {
@@ -1925,7 +2284,7 @@ const regenMs = () => REGEN_SEC[G.up.regen] * 1000;
 const luckPct = () => LUCK_BASE + LUCK_STEP * G.up.luck;
 const storeCap = () => STORE_BASE + STORE_STEP * G.up.store;
 const coinMult = () => 1 + PRESTIGE_BONUS * (G.pr || 0);
-const unlocked = () => CHAIN_IDS.filter(c => c === 'bread' || G.up[c] > 0);
+const unlocked = () => CHAIN_IDS.filter(c => c === 'bread' || G.up[c] > 0).concat(EV ? [EV.chain] : []);
 const xpNeed = l => 4 + l * 6;
 const sellPrice = l => Math.max(1, Math.pow(2, l - 2) | 0);
 const itemKey = (c, l) => c + l;
@@ -1935,7 +2294,7 @@ function freshState() {
   G = { v: 1, energy: BASE_ENERGY, eTs: Date.now(), coins: 30, xp: 0, lvl: 1, done: 0,
     up: upDefaults(), disc: { bread: 1 }, tut: 0, tu: 0, lang: null, pg: [],
     daily: { d: '', s: 0 }, book: {}, st: [], q: null, vib: 1,
-    pr: 0, th: 0, stats: { m: 0, o: 0, v: 0, cr: 0, cb: 0, mx: 0, ml: 1 }, ach: {}, wh: null, eco: 0, vk: { inv: '', fav: 0 } };
+    pr: 0, th: 0, stats: { m: 0, o: 0, v: 0, cr: 0, cb: 0, mx: 0, ml: 1 }, ach: {}, wh: null, eco: 0, vk: { inv: '', fav: 0 }, ev: null, wk: null };
   board = new Array(N).fill(null);
   for (let r = 5; r < ROWS; r++) for (let c = 0; c < COLS; c++) board[idx(r, c)] = { k: 'x', hp: r === 5 ? 1 : 2 };
   board[idx(3, 3)] = { k: 'g', c: 'bread' };
@@ -1970,8 +2329,8 @@ function serialize() {
   return {
     v: 1, ts: Date.now(), b: board.map(enc), e: G.energy, et: G.eTs, co: G.coins, xp: G.xp, lv: G.lvl, dn: G.done,
     up: G.up, disc: G.disc, tut: G.tut, tu: G.tu, lang: G.lang, pg: G.pg, snd: Snd.enabled ? 1 : 0, mus: Snd.music ? 1 : 0,
-    daily: G.daily, book: G.book, st: G.st, q: G.q, vib: G.vib, pr: G.pr, th: G.th, stats: G.stats, ach: G.ach, wh: G.wh, eco: G.eco, vk: G.vk,
-    o: slots.map(s => s.o && s.state !== 'out' ? { cu: s.o.cust, r: s.o.req.map(r => r.c + ':' + r.l), rw: s.o.reward, x: s.o.xp, v: s.o.vip || 0, t: s.o.t } : null),
+    daily: G.daily, book: G.book, st: G.st, q: G.q, vib: G.vib, pr: G.pr, th: G.th, stats: G.stats, ach: G.ach, wh: G.wh, eco: G.eco, vk: G.vk, ev: G.ev, wk: G.wk,
+    o: slots.map(s => s.o && s.state !== 'out' ? { cu: s.o.cust, r: s.o.req.map(r => r.c + ':' + r.l), rw: s.o.reward, x: s.o.xp, v: s.o.vip || 0, t: s.o.t, ep: s.o.ep || 0 } : null),
   };
 }
 function deserialize(d) {
@@ -1995,6 +2354,8 @@ function deserialize(d) {
     wh: d.wh && typeof d.wh.d === 'string' ? { d: d.wh.d, free: d.wh.free ? 1 : 0, ads: clamp(num(d.wh.ads, 0) | 0, 0, WHEEL_ADS) } : null,
     eco: d.eco ? 1 : 0,
     vk: { inv: d.vk && typeof d.vk.inv === 'string' ? d.vk.inv : '', fav: d.vk && d.vk.fav ? 1 : 0 },
+    ev: d.ev && typeof d.ev.k === 'string' ? { k: d.ev.k, pts: Math.max(0, num(d.ev.pts, 0)), cl: Array.isArray(d.ev.cl) ? d.ev.cl.filter(x => typeof x === 'number') : [] } : null,
+    wk: d.wk && typeof d.wk.w === 'string' ? { w: d.wk.w, s: Math.max(0, num(d.wk.s, 0)), last: Math.max(0, num(d.wk.last, 0)), best: Math.max(0, num(d.wk.best, 0)) } : null,
   };
   G.th = clamp(G.th, 0, Math.min(THEMES.length - 1, G.pr));
   for (const k in G.stats) G.stats[k] = Math.max(0, num(G.stats[k], 0));
@@ -2009,7 +2370,7 @@ function deserialize(d) {
     if (!req.length) return;
     const vip = num(o.v, 0);
     if (vip && vip <= Date.now()) return;   // VIP left while we were away
-    setOrder(i, { cust: clamp(o.cu | 0, 0, CUST.length - 1), req, reward: Math.max(1, num(o.rw, 5)), xp: Math.max(1, num(o.x, 2)), ph: Math.random() * 6000, ready: false, have: [], vip: vip || 0, t: num(o.t, Date.now()) }, true);
+    setOrder(i, { cust: clamp(o.cu | 0, 0, CUST.length - 1), req, reward: Math.max(1, num(o.rw, 5)), xp: Math.max(1, num(o.x, 2)), ph: Math.random() * 6000, ready: false, have: [], vip: vip || 0, t: num(o.t, Date.now()), ep: num(o.ep, 0) }, true);
   });
   if (typeof d.snd === 'number') Snd.setEnabled(!!d.snd);
   if (typeof d.mus === 'number') Snd.setMusic(!!d.mus);
@@ -2037,7 +2398,14 @@ function makeOrder(req, avoidCust, bonusLvl) {
   return { cust, req, reward, xp, ph: Math.random() * 6000, ready: false, have: [], vip: 0, t: Date.now() };
 }
 function genOrder() {
-  const ch = unlocked();
+  if (EV && G.tu >= TUT_DONE && Math.random() < EV_ORDER_CHANCE) {
+    const c = EV.chain, top = Math.min(CHAINS[c].max, Math.max(3, (G.disc[c] || 1) + 2));
+    const req = [{ c, l: rint(Math.max(2, top - 2), top) }];
+    if (Math.random() < 0.35) req.push({ c, l: Math.max(1, req[0].l - rint(1, 2)) });
+    const o = makeOrder(req); o.ep = req.reduce((a, r) => a + r.l, 0) * 2; o.reward = Math.round(o.reward * 1.2);
+    return o;
+  }
+  const ch = unlocked().filter(c => !CHAINS[c].ev);
   const maxL = Math.min(8, 2 + Math.ceil(G.lvl / 3));   // +1 item level every 3 player levels
   const minL = Math.max(2, maxL - 2);
   let n = 1;
@@ -2140,8 +2508,25 @@ function patShape(g, shape, x, y) {
   }
 }
 const theme = () => THEMES[(G && G.th) || 0];
-const songIndex = () => (G && G.th) || 0;
-let interior = null;
+const songIndex = () => EV ? EV.song : (G && G.th) || 0;
+let interior = null, garland = null;
+/** Holiday garland strung over the guests' cards (drawn on top of them each frame). */
+function buildGarland() {
+  if (!EV) { garland = null; return; }
+  const dpr = L.dpr, W = L.W, gh = Math.round(L.cs * 0.75);
+  const c = garland || document.createElement('canvas'); garland = c;
+  c.width = Math.round(W * dpr); c.height = Math.round(gh * dpr);
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const n = 8, sag = gh * 0.28, yAt = x => 3 + Math.abs(Math.sin(x / W * n * Math.PI)) * sag;
+  g.beginPath(); for (let x = 0; x <= W; x += 3) { x ? g.lineTo(x, yAt(x)) : g.moveTo(x, yAt(x)); }
+  g.lineWidth = 2; g.strokeStyle = OUT; g.stroke();
+  const cols = ['#e8453c', '#ffcc3e', '#6cc04a', '#4c9fe0', '#ff7aa2'];
+  for (let i = 0; i < n * 2; i++) {
+    const x = (i + 0.5) * W / (n * 2), y = yAt(x);
+    if (EV.id === 'halloween') { const sz = gh * (i % 4 === 1 ? 0.62 : 0.48); g.drawImage(renderKey('i:pumpkin:' + (i % 4 === 1 ? 7 : 2), Math.round(sz * dpr)), x - sz / 2, y - sz * 0.15, sz, sz); }
+    else { rr(g, x - 2, y, 4, 3, 1); g.fillStyle = '#9aa3ad'; g.fill(); ell(g, x, y + 7, 3.4, 5); g.fillStyle = cols[i % cols.length]; g.fill(); g.lineWidth = 1.4; g.strokeStyle = OUT; g.stroke(); g.fillStyle = 'rgba(255,255,255,0.65)'; circ(g, x - 1, y + 5, 1.1); g.fill(); }
+  }
+}
 /** Bakery wall with shelves and lamps; each order card shows its slice of it behind the guest. */
 function buildInterior() {
   const T = theme(), dpr = L.dpr, W = L.W, H0 = Math.round(L.oh * 0.56);
@@ -2196,6 +2581,7 @@ function buildBg() {
   for (let i = 0; i < n; i++) g.arc(i * sw + sw / 2, aw, sw / 2, Math.PI, 0, true);
   g.lineWidth = 3; g.strokeStyle = OUT; g.stroke();
   g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(0, 0, W, aw * 0.3);
+  buildGarland();
   // counter
   const cy = L.oy + L.oh + 2, ch = Math.max(8, L.by - L.fr - cy - 3);
   if (ch > 4) {
@@ -2642,22 +3028,25 @@ let questTab = 'q';
 function questsBody() {
   const w = document.createElement('div');
   const tabs = document.createElement('div'); tabs.className = 'tabs';
-  for (const id of ['q', 'a', 'w']) {
-    const b = document.createElement('button'); b.className = 'tab' + (questTab === id ? ' on' : '');
-    const dot = id === 'q' ? questsClaimable() : id === 'a' ? achClaimable() : wheelFree();
-    b.innerHTML = t(id === 'q' ? 'tab_quests' : id === 'a' ? 'tab_ach' : 'tab_wheel') + (dot ? '<i class="dot"></i>' : '');
+  const ids = EV ? ['e', 'q', 'a', 'w'] : ['q', 'a', 'w'];
+  if (questTab === 'e' && !EV) questTab = 'q';
+  tabs.classList.toggle('t4', ids.length > 3);
+  for (const id of ids) {
+    const b = document.createElement('button'); b.className = 'tab' + (questTab === id ? ' on' : '') + (id === 'e' ? ' evtab' : '');
+    const dot = id === 'q' ? questsClaimable() : id === 'a' ? achClaimable() : id === 'e' ? evClaimable() : wheelFree();
+    b.innerHTML = (id === 'e' ? t('ev_' + EV.id) : t(id === 'q' ? 'tab_quests' : id === 'a' ? 'tab_ach' : 'tab_wheel')) + (dot ? '<i class="dot"></i>' : '');
     b.onclick = () => { if (questTab === id) return; Snd.play('click'); questTab = id; el.mBody.innerHTML = ''; el.mBody.appendChild(questsBody()); el.mBody.scrollTop = 0; };
     tabs.appendChild(b);
   }
   w.appendChild(tabs);
-  w.appendChild(questTab === 'q' ? buildQuests() : questTab === 'a' ? buildAch() : buildWheel());
+  w.appendChild(questTab === 'e' ? buildEvent() : questTab === 'q' ? buildQuests() : questTab === 'a' ? buildAch() : buildWheel());
   return w;
 }
 function refreshQuests() { if (modalOpen && el.modal._kind === 'quests' && !(questTab === 'w' && wheelSpin && wheelSpin.on)) { const sc = el.mBody.scrollTop; el.mBody.innerHTML = ''; el.mBody.appendChild(questsBody()); el.mBody.scrollTop = sc; } }
 function openQuests() {
   if (!questsActive()) { toast(t('quests_locked')); return; }
   ensureQuests();
-  questTab = questsClaimable() ? 'q' : achClaimable() ? 'a' : wheelFree() ? 'w' : 'q';
+  questTab = evClaimable() ? 'e' : questsClaimable() ? 'q' : achClaimable() ? 'a' : wheelFree() ? 'w' : EV ? 'e' : 'q';
   openModal({ kind: 'quests', title: t('rewards'), node: questsBody(), buttons: [{ label: t('close'), cls: 'red', act: closeModal }] });
 }
 function handleDrop(from, to, px, py) {
@@ -2728,6 +3117,8 @@ function deliver(s, mult) {
   Snd.play('deliver'); buzz(20);
   sl.state = 'out'; sl.t0 = now; sl.next = now + 1900;
   questEvent('order'); questEvent('coins', coins);
+  addWeekScore(coins);
+  if (o.ep && G.ev && EV) { G.ev.pts += o.ep * mult; setTimeout(() => FX.text(t('t_ev_pts', { n: o.ep * mult }), tx, R.y + R.h * 0.3, '#ffb14a', Math.round(clamp(R.h * 0.15, 13, 20)), 1200), 700); }
   G.stats.o++; if (o.vip) G.stats.v++;
   if (G.tu === 2) tutAdvance(3);
   checkLevelUp();
@@ -3013,8 +3404,8 @@ function buildUpgrades() {
 function buildBook() {
   const w = document.createElement('div');
   const hint = document.createElement('p'); hint.className = 'center small'; hint.textContent = t('book_hint'); w.appendChild(hint);
-  for (const c of CHAIN_IDS) {
-    const open = c === 'bread' || G.up[c] > 0, max = CHAINS[c].max, disc = open ? (G.disc[c] || 1) : 0;
+  for (const c of CHAIN_IDS.concat(EVENT_CHAINS.filter(c => (EV && EV.chain === c) || G.disc[c]))) {
+    const open = c === 'bread' || G.up[c] > 0 || CHAINS[c].ev, max = CHAINS[c].max, disc = open ? (G.disc[c] || 1) : 0;
     const sec = document.createElement('div'); sec.className = 'bsec' + (open ? '' : ' locked');
     sec.innerHTML = '<div class="bhead"><b>' + t('chain_' + c) + '</b><span>' + disc + '/' + max + '</span></div>';
     const grid = document.createElement('div'); grid.className = 'bgrid';
@@ -3213,7 +3604,7 @@ function buildPrestige() {
   return row;
 }
 function doPrestige() {
-  const keep = { disc: G.disc, book: G.book, daily: G.daily, q: G.q, lang: G.lang, vib: G.vib, stats: G.stats, ach: G.ach, tut: G.tut, wh: G.wh, eco: G.eco, vk: G.vk, pr: G.pr + 1 };
+  const keep = { disc: G.disc, book: G.book, daily: G.daily, q: G.q, lang: G.lang, vib: G.vib, stats: G.stats, ach: G.ach, tut: G.tut, wh: G.wh, eco: G.eco, vk: G.vk, ev: G.ev, wk: G.wk, pr: G.pr + 1 };
   freshState();
   Object.assign(G, keep);
   G.tu = TUT_DONE; G.th = Math.min(THEMES.length - 1, G.pr); G.coins = 50;
@@ -3242,6 +3633,7 @@ function achTitle(a) {
 }
 function buildAch() {
   const w = document.createElement('div');
+  buildWeek(w);
   const list = ACH.slice().sort((a, b) => (achReady(b) - achReady(a)) || (!!G.ach[a.id] - !!G.ach[b.id]));
   for (const a of list) {
     const v = Math.min(statVal(a.st), a.n), done = !!G.ach[a.id], ready = achReady(a);
@@ -3466,6 +3858,104 @@ function runLogo() {
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
+}
+/* ---------- Seasonal events ---------- */
+let EV = null;
+function activeEvent() {
+  let ov = null; try { ov = new URLSearchParams(location.search).get('event'); } catch (e) {}
+  if (ov) return EVENTS.find(e => e.id === ov) || null;
+  const d = new Date(), md = (d.getMonth() + 1) * 100 + d.getDate();
+  for (const e of EVENTS) { const a = e.from[0] * 100 + e.from[1], b = e.to[0] * 100 + e.to[1]; if (a <= b ? md >= a && md <= b : md >= a || md <= b) return e; }
+  return null;
+}
+function eventKey(e) { const d = new Date(); let y = d.getFullYear(); if (e.from[0] > e.to[0] && d.getMonth() + 1 <= e.to[0]) y--; return e.id + y; }
+function eventDaysLeft(e) {
+  const d = new Date(); let y = d.getFullYear(); if (e.from[0] > e.to[0] && d.getMonth() + 1 > e.to[0]) y++;
+  return Math.max(1, Math.ceil((new Date(y, e.to[0] - 1, e.to[1], 23, 59) - d) / 86400000));
+}
+function syncEvent() {
+  if (!G || G.tu < TUT_DONE) return;
+  const e = activeEvent();
+  if (e) {
+    const key = eventKey(e);
+    if (!G.ev || G.ev.k !== key) G.ev = { k: key, pts: 0, cl: [] };
+    if (EV !== e) {
+      EV = e; buildBg();
+      if (!board.some(x => x && x.k === 'g' && x.c === e.chain) && G.pg.indexOf(e.chain) < 0) {
+        G.disc[e.chain] = Math.max(G.disc[e.chain] || 1, 1);
+        placeGen(e.chain); changed();
+        hostSay('host_event', { name: t('ev_' + e.id) });
+      }
+    }
+  } else if (EV || board.some(x => x && EVENT_CHAINS.indexOf(x.c) >= 0) || G.st.some(x => EVENT_CHAINS.indexOf(String(x).split(':')[0]) >= 0)) {
+    EV = null; endEventCleanup(); buildBg();
+  }
+}
+/** When an event is over, its items and generator are bought out for coins. */
+function endEventCleanup() {
+  let coins = 0;
+  for (let i = 0; i < N; i++) { const it = board[i]; if (it && EVENT_CHAINS.indexOf(it.c) >= 0) { coins += it.k === 'g' ? 50 : sellPrice(it.l || 1) * 2; board[i] = null; } }
+  G.st = G.st.filter(x => { const it = dec(x); if (it && EVENT_CHAINS.indexOf(it.c) >= 0) { coins += sellPrice(it.l) * 2; return false; } return true; });
+  G.pg = G.pg.filter(c => EVENT_CHAINS.indexOf(c) < 0);
+  for (const sl of slots) if (sl.o && sl.o.req.some(r => EVENT_CHAINS.indexOf(r.c) >= 0)) setOrder(slots.indexOf(sl), genOrder(), true);
+  if (!coins) { changed(); return; }
+  G.coins += coins; changed(); saveSoon();
+  openModal({ title: t('ev_end_title'), html: '<div class="bigicon">' + ICON.gift + '</div><p class="center">' + t('ev_end_text', { n: coins }) + '</p>', buttons: [{ label: t('great'), cls: 'green', act: closeModal }] });
+}
+const evClaimable = () => !!EV && !!G.ev && EV_TRACK.some((m, i) => G.ev.pts >= m.p && G.ev.cl.indexOf(i) < 0);
+function buildEvent() {
+  const w = document.createElement('div');
+  const ban = document.createElement('div'); ban.className = 'evban ' + EV.id;
+  ban.appendChild(iconCanvas('i:' + EV.chain + ':7', 64));
+  const tx = document.createElement('div'); tx.innerHTML = '<b>' + t('ev_' + EV.id) + '</b><small>' + t('ev_desc') + '</small><small class="strong">' + t('ev_left', { d: eventDaysLeft(EV) }) + '</small>';
+  ban.appendChild(tx); w.appendChild(ban);
+  const pts = G.ev.pts, next = EV_TRACK.find(m => m.p > pts) || EV_TRACK[EV_TRACK.length - 1];
+  const pr = document.createElement('div'); pr.className = 'evprog';
+  pr.innerHTML = '<b>' + t('ev_pts', { n: pts }) + '</b><div class="bbar"><i style="width:' + Math.min(100, Math.round(100 * pts / next.p)) + '%"></i></div>';
+  w.appendChild(pr);
+  EV_TRACK.forEach((m, i) => {
+    const done = G.ev.cl.indexOf(i) >= 0, ready = pts >= m.p && !done;
+    const r = document.createElement('div'); r.className = 'qrow' + (done ? ' done' : '');
+    r.innerHTML = '<div class="uic">' + (i === EV_TRACK.length - 1 ? ICON.trophy : ICON.gift) + '</div><div class="utext"><b>' + m.p + ' ' + t('ev_pts_short') + '</b></div>';
+    const right = document.createElement('div'); right.className = 'qright';
+    if (done) right.innerHTML = ICON.tick;
+    else if (ready) {
+      const b = document.createElement('button'); b.className = 'btn green ubuy pulse'; b.textContent = t('claim');
+      b.onclick = () => { if (G.ev.cl.indexOf(i) >= 0) return; G.ev.cl.push(i); Snd.play('reward'); grant(m.r, elCenter(b)); if (i === EV_TRACK.length - 1) FX.confetti(70); saveSoon(); refreshQuests(); };
+      right.appendChild(b);
+    } else right.innerHTML = '<div class="qrw">' + rewardHtml(m.r) + '</div>';
+    r.appendChild(right); w.appendChild(r);
+  });
+  return w;
+}
+
+/* ---------- Weekly score (friends competition in VK) ---------- */
+function weekKey() { const d = new Date(), wd = (d.getDay() + 6) % 7, m = new Date(d.getFullYear(), d.getMonth(), d.getDate() - wd); return m.getFullYear() + '-' + (m.getMonth() + 1) + '-' + m.getDate(); }
+function ensureWeek() {
+  const k = weekKey();
+  if (!G.wk || G.wk.w !== k) { const o = G.wk || { s: 0, best: 0 }; G.wk = { w: k, s: 0, last: o.w ? o.s : 0, best: Math.max(o.best || 0, o.s || 0) }; }
+}
+let lastScoreSent = 0;
+function addWeekScore(n) {
+  ensureWeek(); G.wk.s += n;
+  if (VK_SCORE_URL && Platform.name === 'vk' && performance.now() - lastScoreSent > 60000) {
+    lastScoreSent = performance.now();
+    try { fetch(VK_SCORE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score: G.wk.s, week: G.wk.w, params: location.search.slice(1) }) }).catch(() => {}); } catch (e) {}
+  }
+}
+function buildWeek(w) {
+  ensureWeek();
+  const c = document.createElement('div'); c.className = 'weekcard';
+  c.innerHTML = '<div class="uic">' + ICON.trophy + '</div><div class="utext"><b>' + t('week_title') + ': ' + fmt(G.wk.s) + ICON.coin + '</b><small>' + t('week_text') + '</small><small>' +
+    t('week_best', { n: fmt(Math.max(G.wk.best, G.wk.s)) }) + (G.wk.last ? ' · ' + t('week_last', { n: fmt(G.wk.last) }) : '') + '</small></div>';
+  const soc = Platform.social;
+  if (soc && soc.leaderboard) {
+    const btns = document.createElement('div'); btns.className = 'weekbtns';
+    const b1 = document.createElement('button'); b1.className = 'btn blue small'; b1.textContent = t('week_friends'); b1.onclick = () => { Snd.play('click'); soc.leaderboard(G.wk.s); };
+    const b2 = document.createElement('button'); b2.className = 'btn yellow small'; b2.textContent = t('week_share'); b2.onclick = () => { Snd.play('click'); soc.post(t('week_post', { n: fmt(G.wk.s) })); };
+    btns.appendChild(b1); btns.appendChild(b2); c.appendChild(btns);
+  }
+  w.appendChild(c);
 }
 function buildSettings() {
   const w = document.createElement('div');
@@ -3808,7 +4298,14 @@ function drawOrders(now) {
       const fsz = Math.round(rowH * 0.66);
       g.font = '900 ' + fsz + 'px ' + FONT;
       const txt = String(o.reward), tw = g.measureText(txt).width, csz = fsz * 1.15;
-      const tx0 = px + pw / 2 - (tw + csz + 3) / 2;
+      const etxt = o.ep ? '+' + o.ep : '', etw = etxt ? g.measureText(etxt).width + csz + 6 : 0;
+      const tx0 = px + pw / 2 - (tw + csz + 3 + etw) / 2;
+      if (etxt) {
+        const ex = tx0 + tw + csz + 9;
+        drawImg(SPR.get('i:' + (EV ? EV.chain : 'pumpkin') + ':2'), ex + csz / 2, by + rowH / 2, csz * 1.15);
+        g.textAlign = 'left'; g.lineWidth = fsz * 0.22; g.strokeStyle = '#fff'; g.strokeText(etxt, ex + csz + 1, by + rowH / 2 + 1);
+        g.fillStyle = '#d65e0a'; g.fillText(etxt, ex + csz + 1, by + rowH / 2 + 1); g.textAlign = 'center';
+      }
       drawImg(USPR.get('coin'), tx0 + csz / 2, by + rowH / 2, csz);
       g.textAlign = 'left';
       g.lineWidth = fsz * 0.22; g.strokeStyle = '#fff'; g.strokeText(txt, tx0 + csz + 3, by + rowH / 2 + 1);
@@ -3965,7 +4462,7 @@ function drawBoard(now, dt) {
 const amb = [];
 function drawAmbient(now, dt) {
   if (G.eco) return;
-  const th = G.th || 0, W = L.W, H = L.H, s = dt / 1000;
+  const th = EV ? (EV.id === 'newyear' ? 4 : 5) : (G.th || 0), W = L.W, H = L.H, s = dt / 1000;
   if (amb.length === 0 || amb.th !== th) {
     amb.length = 0; amb.th = th;
     for (let i = 0; i < 14; i++) amb.push({ x: Math.random() * W, y: Math.random() * H, r: rnd(1.6, 3.6), ph: Math.random() * 6, v: rnd(0.6, 1.4) });
@@ -3976,6 +4473,7 @@ function drawAmbient(now, dt) {
       case 1: p.y -= 22 * p.v * s; p.x += Math.sin(now * 0.002 + p.ph) * 0.3; break;           // bubbles rise
       case 2: p.y += 18 * p.v * s; p.x += Math.sin(now * 0.0015 + p.ph) * 0.6; break;         // leaves fall & sway
       case 4: p.y += 26 * p.v * s; p.x += Math.sin(now * 0.001 + p.ph) * 0.4; break;          // snow
+      case 5: p.x += 34 * p.v * s; p.y += Math.sin(now * 0.003 + p.ph) * 0.5; break;          // bats
       default: p.y -= 8 * p.v * s; p.x += Math.sin(now * 0.001 + p.ph) * 0.2;                 // dust motes / sparkles
     }
     if (p.y < -10) p.y = H + 10; if (p.y > H + 10) p.y = -10;
@@ -3984,6 +4482,13 @@ function drawAmbient(now, dt) {
     if (th === 1) { g.globalAlpha = 0.55; g.beginPath(); g.arc(p.x, p.y, p.r * 1.4, 0, Math.PI * 2); g.lineWidth = 1.2; g.strokeStyle = '#ffffff'; g.stroke(); }
     else if (th === 2) { g.globalAlpha = 0.6; g.save(); g.translate(p.x, p.y); g.rotate(Math.sin(now * 0.002 + p.ph)); g.beginPath(); g.ellipse(0, 0, p.r * 1.6, p.r * 0.8, 0, 0, Math.PI * 2); g.fillStyle = p.ph > 3 ? '#8fcf5f' : '#e9a23b'; g.fill(); g.restore(); }
     else if (th === 3) { g.globalAlpha = 0.35 + 0.6 * tw; drawImg(USPR.get('spark'), p.x, p.y, p.r * 4); }
+    else if (th === 5) {
+      if (p.ph > 2.2) continue;
+      const fl = Math.sin(now * 0.02 + p.ph * 5) * 0.6, r = p.r * 2.2;
+      g.globalAlpha = 0.55; g.fillStyle = '#3d2412';
+      g.beginPath(); g.moveTo(p.x, p.y); g.quadraticCurveTo(p.x - r, p.y - r * fl - r * 0.3, p.x - r * 2, p.y - r * fl * 0.5); g.quadraticCurveTo(p.x - r, p.y + r * 0.2, p.x, p.y + r * 0.3);
+      g.quadraticCurveTo(p.x + r, p.y + r * 0.2, p.x + r * 2, p.y - r * fl * 0.5); g.quadraticCurveTo(p.x + r, p.y - r * fl - r * 0.3, p.x, p.y); g.fill();
+    }
     else if (th === 4) { g.globalAlpha = 0.9; g.beginPath(); g.arc(p.x, p.y, p.r, 0, Math.PI * 2); g.fillStyle = '#ffffff'; g.fill(); g.lineWidth = 1; g.strokeStyle = 'rgba(90,140,200,0.55)'; g.stroke(); }
     else { g.globalAlpha = 0.25 + 0.35 * tw; g.beginPath(); g.arc(p.x, p.y, p.r * 0.8, 0, Math.PI * 2); g.fillStyle = '#fffbe8'; g.fill(); }
   }
@@ -3996,6 +4501,15 @@ function render(now, dt) {
   if (shakeT) { const k = (now - shakeT) / 260; if (k >= 1) shakeT = 0; else { ox = rnd(-1, 1) * shakeAmp * (1 - k); oy = rnd(-1, 1) * shakeAmp * (1 - k); } }
   ctx.setTransform(L.dpr, 0, 0, L.dpr, ox * L.dpr, oy * L.dpr);
   drawOrders(now);
+  if (garland) {
+    ctx.drawImage(garland, 0, L.oy - garland.height / L.dpr * 0.2, L.W, garland.height / L.dpr);
+    if (EV && EV.id === 'newyear' && !G.eco) {   // twinkling bulbs
+      const gh = garland.height / L.dpr, n = 8, sag = gh * 0.28, y0 = L.oy - gh * 0.2;
+      ctx.globalAlpha = 0.5;
+      for (let i = 0; i < n * 2; i++) if (((now / 400) + i) % 3 < 1) { const x = (i + 0.5) * L.W / (n * 2); drawImg(USPR.get('glow'), x, y0 + 3 + Math.abs(Math.sin(x / L.W * n * Math.PI)) * sag + 7, gh * 0.55); }
+      ctx.globalAlpha = 1;
+    }
+  }
   drawBoard(now, dt);
   drawAmbient(now, dt);
   if (G.tu < TUT_DONE) drawTutorial(now);
@@ -4013,11 +4527,12 @@ function render(now, dt) {
    ===================================================================== */
 let lastT = performance.now(), running = false, lastSlowTick = 0;
 function slowTick(now) {
+  syncEvent();
   updateGift();
   Host.tick(now);
   const sd = shopAttention(); if (hudCache.sd !== sd) { hudCache.sd = sd; $('shopDot').classList.toggle('hidden', !sd); }
   ensureQuests();
-  const qd = questsClaimable() || (questsActive() && (achClaimable() || wheelFree())); if (hudCache.qd !== qd) { hudCache.qd = qd; $('questDot').classList.toggle('hidden', !qd); }
+  const qd = questsClaimable() || (questsActive() && (achClaimable() || wheelFree() || evClaimable())); if (hudCache.qd !== qd) { hudCache.qd = qd; $('questDot').classList.toggle('hidden', !qd); }
   const an = ACH.filter(achReady).length;
   if (hudCache.an !== undefined && an > hudCache.an && questsActive()) { toast(t('t_ach')); Snd.play('quest'); }
   hudCache.an = an;

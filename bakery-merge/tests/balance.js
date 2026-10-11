@@ -25,7 +25,7 @@ const HOURS = +(process.argv[2] || 8);
     const items = () => { const a = []; for (let i = 0; i < N; i++) if (board[i] && board[i].k === 'i') a.push(i); return a; };
     const needs = () => { const m = new Map(); for (const sl of B.slots) if (sl.o) sl.o.req.forEach((r, k) => { if (!sl.o.have[k]) m.set(r.c, Math.max(m.get(r.c) || 0, r.l)); }); return m; };
     function tryBuy() {
-      for (const id of ['cake', 'fruit', 'coffee', 'ice']) {
+      for (const id of ['cake', 'fruit', 'coffee', 'ice', 'choco', 'pizza']) {
         const u = S.UPG.find(x => x.id === id);
         if (G.up[id] === 0 && !(u.minLvl && G.lvl < u.minLvl)) { if (S.buyUpgrade(u)) { unlocks[id] = Math.round(active / 60000); return true; } return false; }
       }
@@ -46,9 +46,13 @@ const HOURS = +(process.argv[2] || 8);
       }
       // 2. merge something useful
       const nd = needs(), seen = new Map(); let best = null;
+      const exact = new Map(), have = new Map();   // items an order needs as they are must not be merged away
+      for (const sl of B.slots) if (sl.o) sl.o.req.forEach(r => exact.set(r.c + r.l, (exact.get(r.c + r.l) || 0) + 1));
+      for (const i of items()) { const k = board[i].c + board[i].l; have.set(k, (have.get(k) || 0) + 1); }
       for (const i of items()) {
         const it = board[i], k = it.c + it.l;
         if (it.l >= S.CHAINS[it.c].max) continue;
+        if ((have.get(k) || 0) - 2 < (exact.get(k) || 0)) continue;
         if (seen.has(k)) { const useful = (nd.get(it.c) || 0) > it.l; const sc = (useful ? 100 : 0) + it.l; if (!best || sc > best.sc) best = { a: seen.get(k), b: i, sc }; }
         else seen.set(k, i);
       }

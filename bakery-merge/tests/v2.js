@@ -74,7 +74,7 @@ async function helpers(p) {
     assert(/5/.test(lockTxt), 'coffee locked by level: ' + lockTxt);
     await p.screenshot({ path: 'shop2.png' });
     await p.locator('.tab').nth(1).click(); await sleep(300);
-    assert(await p.locator('.bsec').count() === 5, 'recipe book shows 5 chains');
+    assert(await p.locator('.bsec').count() === 7, 'recipe book shows 7 chains');
     await p.screenshot({ path: 'book.png' });
     await p.click('#mBtns .btn'); await sleep(300);
     await p.evaluate(() => { const B = window.__bakery; B.G.disc.bread = 8; B.G.lvl = 5; });

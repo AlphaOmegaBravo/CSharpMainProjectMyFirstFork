@@ -44,7 +44,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const R = await p.evaluate(() => { const B = window.__bakery, R = B.L.cards[1]; return { x: R.x + R.w / 2 + B.L.ax, y: R.y + R.h * 0.3 + B.L.ay }; });
   await p.mouse.click(R.x, R.y); await sleep(200);
   const f = await p.evaluate(() => window.__bakery.focus);
-  assert(f && f.cells.includes(20), 'order tap highlights items to merge: ' + JSON.stringify(f && f.cells));
+  const ok = await p.evaluate(f => f && f.cells.length > 0 && f.cells.every(i => { const it = window.__bakery.board[i]; return it && it.c === 'bread' && (it.k === 'g' || it.l < 4); }), f);
+  assert(ok, 'order tap highlights bread items below the needed level: ' + JSON.stringify(f && f.cells));
   await p.screenshot({ path: 'focus.png' });
   /* --- new customers --- */
   await p.evaluate(() => { const B = window.__bakery; [6, 7, 8].forEach((c, i) => { const o = B.makeOrder([{ c: 'bread', l: 2 }]); o.cust = c; B.setOrder(i, o, true); }); B.recount(); });

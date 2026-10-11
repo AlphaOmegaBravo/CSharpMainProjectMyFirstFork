@@ -84,7 +84,7 @@ const assert = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) pro
   const before = await st();
   // persistence
   await p.waitForTimeout(1000);
-  await p.reload(); await p.waitForTimeout(900);
+  await p.reload(); await p.waitForSelector('#loader', { state: 'hidden' }); await p.waitForTimeout(300);
   const s5 = await st();
   assert(JSON.stringify(s5.b) === JSON.stringify(before.b), 'board persisted across reload');
   assert(s5.co === before.co, 'coins persisted');
