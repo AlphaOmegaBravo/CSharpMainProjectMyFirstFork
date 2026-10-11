@@ -143,6 +143,10 @@ svg{display:block}
 #modal{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(40,20,8,.55);padding:1em}
 .mcard{width:100%;max-width:23em;max-height:94%;display:flex;flex-direction:column;background:var(--cream);border:.2em solid var(--ink);border-radius:1.2em;box-shadow:0 .35em 0 var(--ink);animation:mpop .3s cubic-bezier(.2,1.5,.4,1)}
 @keyframes mpop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+#modal{transition:background-color .17s}
+#modal.closing{background:rgba(40,20,8,0);pointer-events:none}
+#modal.closing .mcard{animation:mout .17s ease-in forwards}
+@keyframes mout{to{transform:scale(.7);opacity:0}}
 .mtitle{background:#e8584a;color:#fff;font-weight:900;font-size:1.25em;text-align:center;padding:.45em .6em .5em;border-bottom:.16em solid var(--ink);border-radius:1em 1em 0 0;text-shadow:0 .1em 0 rgba(0,0,0,.3)}
 .mbody{padding:.8em .85em;overflow:auto;font-weight:700;line-height:1.38;font-size:.95em;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .mbody p{margin:.2em 0 .6em}
@@ -191,7 +195,11 @@ svg{display:block}
 #loader{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(#ffe2b8,#f4b77c);transition:opacity .45s}
 #loader.fade{opacity:0;pointer-events:none}
 #loader h1{font-size:2.1em;margin:.3em .5em;color:#fff;text-align:center;line-height:1.1;text-shadow:.07em .07em 0 var(--ink),-.07em .07em 0 var(--ink),.07em -.07em 0 var(--ink),-.07em -.07em 0 var(--ink),0 .16em 0 var(--ink)}
-#loader canvas{width:7em;height:7em;animation:bob 1s ease-in-out infinite}
+#loader canvas{display:block}
+#host{position:absolute;left:.4em;bottom:9em;z-index:14;display:flex;align-items:flex-end;gap:.25em;max-width:94%;transform:translateX(-115%);transition:transform .35s cubic-bezier(.2,1.3,.4,1);cursor:pointer}
+#host.show{transform:none}
+#hostAva{width:4.4em;height:4.4em;flex:none;filter:drop-shadow(0 .15em 0 rgba(61,36,18,.35))}
+#hostBubble{background:#fff;border:.16em solid var(--ink);border-radius:1em 1em 1em .25em;padding:.5em .8em;font-weight:800;font-size:.88em;line-height:1.25;box-shadow:0 .18em 0 var(--ink);margin-bottom:1.6em;min-height:2.6em}
 #loader p{font-weight:800;opacity:.75}
 @keyframes bob{0%,100%{transform:translateY(0) scale(1,1)}50%{transform:translateY(-.5em) scale(.97,1.03)}}
 </style>
@@ -222,7 +230,8 @@ svg{display:block}
   <canvas id="fx"></canvas>
   <div id="modal" class="hidden"><div class="mcard"><div class="mtitle" id="mTitle"></div><div class="mbody" id="mBody"></div><div class="mbtns" id="mBtns"></div></div></div>
   <div id="ad" class="hidden"><div class="adbox"><span class="adtag">AD</span><div class="adtitle" id="adTitle"></div><div class="adtext" id="adText"></div><div class="adscreen">DEMO</div><div class="adbar"><i id="adFill"></i></div><div id="adCount"></div><button class="btn yellow" id="adClose"></button></div></div>
-  <div id="loader"><canvas id="loaderIcon" width="160" height="160"></canvas><h1 id="loaderTitle">Пекарня-мёрдж</h1><p id="loaderText">Загрузка…</p></div>
+  <div id="host" class="hidden"><canvas id="hostAva"></canvas><div id="hostBubble"></div></div>
+  <div id="loader"><canvas id="logo"></canvas><p id="loaderText">Загрузка…</p></div>
 </div>
 <script>
 /*! @vkontakte/vk-bridge v3.0.2 | MIT License | (c) VK — used only inside VK Mini Apps */
@@ -235,7 +244,7 @@ svg{display:block}
 /* =====================================================================
    1. CONFIG
    ===================================================================== */
-const VERSION = '0.7';
+const VERSION = '0.8';
 const COLS = 7, ROWS = 9, N = COLS * ROWS;
 const OUT = '#3d2412';
 const FONT = '"Nunito","Varela Round","Arial Rounded MT Bold","Trebuchet MS",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
@@ -270,6 +279,9 @@ const STORE_BASE = 4, STORE_STEP = 2;
 const BUBBLE_CHANCE = 0.08, BUBBLE_MS = 90000;
 const VIP_CHANCE = 0.12, VIP_MS = 240000, VIP_MULT = 3;
 const COMBO_MS = 2500, COMBO_MAX_BONUS = 5;
+// how a new item leaves its generator: egg rolls out of the hen house, fruit drops from the tree, scoop pops out of the cart
+const SPAWN_STYLE = { cake: 'roll', fruit: 'drop', ice: 'pop', pumpkin: 'roll', ginger: 'pop' };
+const bounceOut = k => { const n = 7.5625, d = 2.75; if (k < 1 / d) return n * k * k; if (k < 2 / d) return n * (k -= 1.5 / d) * k + 0.75; if (k < 2.5 / d) return n * (k -= 2.25 / d) * k + 0.9375; return n * (k -= 2.625 / d) * k + 0.984375; };
 const SKIP_MS = 3 * 60000;   // an unfinished order can be swapped after this time
 const PRESTIGE_LVL = 10, PRESTIGE_BONUS = 0.25;
 // wheel of fortune: 1 free spin a day + WHEEL_ADS spins for rewarded ads; w = weight
@@ -398,6 +410,14 @@ const I18N = {
     away_title: 'С возвращением!', away_text: 'Пока тебя не было ({h}), пекарня продавала булочки.', hours: '{h} ч {m} мин',
     rewards: 'Награды', tab_wheel: 'Колесо', spin_free: 'Крутить бесплатно!', spin_ad: 'Крутить ещё ({n})', spin_tomorrow: 'Приходи завтра',
     t_ad_none: 'Реклама пока недоступна, попробуй чуть позже',
+    host_hi: 'Привет! Я Пышка, хозяйка этой пекарни. Вместе мы испечём что угодно!',
+    host_tips: ['Соединяй предметы рядом с ящиками, и они откроются.', 'Ненужное можно убрать на склад или продать.', 'Тапни по заказу, и я подсвечу, из чего его собрать.', 'Быстрые слияния подряд дают комбо и монеты!', 'Загляни в «Награды»: там задания, достижения и колесо удачи.', 'VIP-гости платят втрое, но не любят ждать!', 'Пузырь с копией лопнет через полторы минуты, не зевай!', 'Улучши «Жаркую печь», и энергия будет копиться быстрее.', 'Гость заждался? Нажми ↻ на его карточке.'],
+    host_noenergy: 'Печь остыла… Энергия скоро вернётся, а можно подкинуть дров за рекламу.',
+    host_vip: 'Ого, VIP-гость! Постарайся успеть, он щедрый!',
+    host_chain: 'Ура, у нас {name}! Столько новых рецептов!',
+    host_lvl1: 'Ты настоящий мастер!', host_lvl2: 'Пекарня процветает, гостей всё больше!', host_lvl3: 'Чую запах успеха… и булочек!',
+    host_back: 'С возвращением! Я скучала и кое-что испекла.',
+    host_prestige: 'Новая пекарня, новые гости! Вперёд!',
     vk_invite: 'Позови друзей в пекарню', vk_invite_d: 'Раз в день: +{n} энергии', vk_fav: 'Добавь игру в избранное', vk_fav_d: 'Один раз: +{n} монет', vk_go: 'Позвать', vk_add: 'Добавить',
     eco: 'Экономия заряда', t_coins_add: '+{n} монет!',
     vibration: 'Вибрация', quests_locked: 'Задания откроются после обучения', lvl_new: 'Новое в магазине: {name}!', max: 'макс.',
@@ -482,6 +502,14 @@ const I18N = {
     away_title: 'Welcome back!', away_text: 'While you were away ({h}), your bakery kept selling buns.', hours: '{h}h {m}m',
     rewards: 'Rewards', tab_wheel: 'Wheel', spin_free: 'Free spin!', spin_ad: 'Spin again ({n})', spin_tomorrow: 'Come back tomorrow',
     t_ad_none: 'No ads available right now, try again later',
+    host_hi: 'Hi! I\u2019m Pyshka, the owner of this bakery. Together we can bake anything!',
+    host_tips: ['Merge items next to crates to open them.', 'Put spare items into storage or sell them.', 'Tap an order and I\u2019ll highlight what to merge.', 'Quick merges in a row give combos and coins!', 'Check «Rewards»: tasks, achievements and the lucky wheel.', 'VIP guests pay triple, but they don\u2019t like to wait!', 'A bubble pops after a minute and a half, be quick!', 'Upgrade the «Hot Oven» to refill energy faster.', 'A guest is tired of waiting? Tap ↻ on their card.'],
+    host_noenergy: 'The oven cooled down… Energy will be back soon, or watch an ad for more firewood.',
+    host_vip: 'Wow, a VIP guest! Hurry, they pay well!',
+    host_chain: 'Hooray, we have the {name}! So many new recipes!',
+    host_lvl1: 'You\u2019re a true master!', host_lvl2: 'The bakery is thriving!', host_lvl3: 'I smell success… and buns!',
+    host_back: 'Welcome back! I missed you and baked something.',
+    host_prestige: 'A new bakery, new guests! Let\u2019s go!',
     vk_invite: 'Invite friends to the bakery', vk_invite_d: 'Once a day: +{n} energy', vk_fav: 'Add the game to favorites', vk_fav_d: 'Once: +{n} coins', vk_go: 'Invite', vk_add: 'Add',
     eco: 'Battery saver', t_coins_add: '+{n} coins!',
     vibration: 'Vibration', quests_locked: 'Tasks unlock after the tutorial', lvl_new: 'New in the shop: {name}!', max: 'max',
@@ -795,26 +823,30 @@ const Snd = (() => {
   function noise(dur, o) {
     o = o || {};
     const a = ensure(); if (!a) return;
-    const t0 = a.currentTime + (o.delay || 0);
+    const t0 = (o.at || a.currentTime) + (o.delay || 0);
     const src = a.createBufferSource(); src.buffer = noiseBuf;
     const f = a.createBiquadFilter(); f.type = o.ftype || 'bandpass'; f.frequency.value = o.freq || 1500; f.Q.value = o.q || 1;
     const g = a.createGain();
     g.gain.setValueAtTime(o.vol || 0.15, t0);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    src.connect(f); f.connect(g); g.connect(master);
+    src.connect(f); f.connect(g); g.connect(o.bus || master);
     src.start(t0); src.stop(t0 + dur + 0.02);
     src.onended = () => { src.disconnect(); f.disconnect(); g.disconnect(); };
   }
   const semi = (b, s) => b * Math.pow(2, s / 12);
+  // merge timbre per chain: oscillator type, volume, note length, extra sparkle interval
+  const TIMBRE = { bread: { t: 'triangle', v: 0.17, d: 0.2 }, cake: { t: 'sine', v: 0.2, d: 0.34, p: 7 }, fruit: { t: 'square', v: 0.055, d: 0.12 },
+    coffee: { t: 'sine', v: 0.22, d: 0.12, p: 12 }, ice: { t: 'sine', v: 0.14, d: 0.42, p: 19 }, choco: { t: 'triangle', v: 0.2, d: 0.28, p: 5 }, pizza: { t: 'square', v: 0.05, d: 0.16, p: 12 },
+    pumpkin: { t: 'square', v: 0.05, d: 0.25, p: 6 }, ginger: { t: 'sine', v: 0.18, d: 0.4, p: 19 } };
   const FX = {
     tap() { tone(660, 0.06, { vol: 0.1, to: 880 }); },
     pick() { tone(520, 0.07, { vol: 0.1, to: 700 }); },
     drop() { tone(330, 0.07, { vol: 0.12, to: 220 }); },
     spawn() { tone(360, 0.13, { type: 'triangle', vol: 0.22, to: 760 }); noise(0.06, { vol: 0.06, freq: 3000 }); },
-    merge(l) {
-      const base = semi(392, (l - 2) * 2);
-      [0, 4, 7, 12].forEach((s, i) => tone(semi(base, s), 0.2, { type: 'triangle', vol: 0.17, delay: i * 0.045 }));
-      tone(semi(base, 24), 0.3, { vol: 0.06, delay: 0.17 });
+    merge(l, c) {
+      const base = semi(392, (l - 2) * 2 + rnd(-0.15, 0.15)), tm = TIMBRE[c] || TIMBRE.bread;
+      [0, 4, 7, 12].forEach((s, i) => tone(semi(base, s), tm.d, { type: tm.t, vol: tm.v, delay: i * 0.045 }));
+      tone(semi(base, 24 + (tm.p || 0)), 0.3, { vol: 0.06, delay: 0.17 });
       noise(0.12, { vol: 0.05, freq: 5000, delay: 0.02 });
     },
     coin() {
@@ -831,6 +863,7 @@ const Snd = (() => {
     click() { tone(880, 0.04, { vol: 0.07 }); },
     reward() { [0, 4, 7, 11, 14].forEach((s, i) => tone(semi(587, s), 0.25, { type: 'triangle', vol: 0.12, delay: i * 0.06 })); },
     tick() { tone(1400, 0.025, { type: 'square', vol: 0.03 }); },
+    blip() { tone(rnd(650, 950), 0.045, { type: 'square', vol: 0.018 }); },
     pop() { noise(0.08, { vol: 0.14, freq: 3500, q: 1.2 }); tone(900, 0.07, { vol: 0.08, to: 1600 }); },
     bubble() { tone(500, 0.2, { vol: 0.08, to: 1100 }); tone(750, 0.2, { vol: 0.06, to: 1500, delay: 0.07 }); },
     combo(n) { const b = semi(523, Math.min(12, (n - 3) * 2)); tone(b, 0.12, { type: 'square', vol: 0.05 }); tone(semi(b, 7), 0.2, { type: 'square', vol: 0.05, delay: 0.06 }); },
@@ -839,24 +872,35 @@ const Snd = (() => {
     quest() { [0, 7, 12, 16].forEach((s, i) => tone(semi(659, s), 0.18, { type: 'triangle', vol: 0.12, delay: i * 0.05 })); },
     sad() { tone(330, 0.25, { type: 'triangle', vol: 0.08, to: 260 }); tone(262, 0.35, { type: 'triangle', vol: 0.07, to: 200, delay: 0.2 }); },
   };
-  /* ---- background music: procedural music-box loop, scheduled ahead ---- */
-  const BEAT = 60 / 84 / 2;                                 // eighth note @ 84 bpm
-  const PROG = [[0, 4, 7, 12], [-3, 0, 4, 9], [-7, -3, 0, 5], [-5, -1, 2, 7], [0, 4, 7, 12], [-8, -5, -1, 4], [-7, -3, 0, 5], [-5, -1, 2, 7]];
-  const ARP = [0, 1, 2, 3, 2, 1, 2, 1];
-  const PENTA = [0, 2, 4, 7, 9, 12, 14, 16];
-  let mStep = 0, mNext = 0, mel = 3, mTimer = 0, mOn = false;
+  /* ---- background music: procedural songs (one per interior + events), scheduled ahead ---- */
+  // st = eighth-notes per bar, prog = chords as semitones from C4, arp = chord-tone order per step,
+  // mel = melody scale, mp = melody probability, mo = melody base freq, bell = bell overtone, jingle = sleigh noise
+  const SONGS = [
+    { bpm: 84, st: 8, prog: [[0, 4, 7, 12], [-3, 0, 4, 9], [-7, -3, 0, 5], [-5, -1, 2, 7], [0, 4, 7, 12], [-8, -5, -1, 4], [-7, -3, 0, 5], [-5, -1, 2, 7]], arp: [0, 1, 2, 3, 2, 1, 2, 1], at: 'triangle', mel: [0, 2, 4, 7, 9, 12, 14, 16], mp: 0.45, mo: 523.25, mt: 'sine' },           // city: cozy music box
+    { bpm: 100, st: 6, prog: [[-7, -3, 0, 5], [-10, -7, -3, 2], [-2, 2, 5, 10], [0, 4, 7, 12]], arp: [0, 1, 2, 3, 2, 1], at: 'sine', mel: [0, 2, 4, 5, 7, 9, 12, 14], mp: 0.5, mo: 523.25, mt: 'triangle' },                                                       // seaside: waltz
+    { bpm: 76, st: 8, prog: [[-5, -1, 2, 7], [-8, -5, -1, 4], [0, 4, 7, 12], [-10, -6, -3, 2]], arp: [0, 2, 1, 3, 0, 2, 1, 3], at: 'triangle', mel: [2, 4, 7, 9, 11, 14, 16, 19], mp: 0.35, mo: 392, mt: 'sine', slow: 1 },                                          // forest: flute
+    { bpm: 70, st: 8, prog: [[0, 4, 7, 11], [2, 6, 9, 14], [-3, 0, 4, 7], [2, 6, 9, 12]], arp: [0, 1, 2, 3, 1, 2, 3, 2], at: 'sine', mel: [0, 2, 4, 6, 7, 9, 11, 12, 14], mp: 0.6, mo: 1046.5, mt: 'sine', bell: 1 },                                            // fairy: celesta
+    { bpm: 66, st: 8, prog: [[-3, 0, 4, 9], [-7, -3, 0, 5], [0, 4, 7, 12], [-5, -1, 2, 7]], arp: [0, 1, 2, 1, 3, 1, 2, 1], at: 'triangle', mel: [0, 2, 4, 7, 9, 12, 14, 16], mp: 0.4, mo: 783.99, mt: 'sine', bell: 1, jingle: 1 },                          // winter: bells
+    { bpm: 80, st: 8, prog: [[-3, 0, 4, 9], [2, 5, 9, 14], [-8, -4, -1, 4], [-3, 0, 4, 9]], arp: [0, 2, 1, 3, 0, 2, 3, 1], at: 'square', mel: [-3, -1, 0, 2, 4, 5, 8, 9], mp: 0.4, mo: 440, mt: 'triangle', av: 0.016 },                                        // halloween: spooky minor
+    { bpm: 96, st: 8, prog: [[0, 4, 7, 12], [-7, -3, 0, 5], [-5, -1, 2, 7], [0, 4, 7, 12]], arp: [0, 1, 2, 3, 2, 1, 0, 2], at: 'triangle', mel: [0, 2, 4, 5, 7, 9, 12, 14], mp: 0.55, mo: 783.99, mt: 'sine', bell: 1, jingle: 1 },                        // new year: jingle
+  ];
+  let song = SONGS[0], mStep = 0, mNext = 0, mel = 3, mTimer = 0, mOn = false;
   function musicTick() {
     const a = ac; if (!a || paused || a.state !== 'running') return;
     if (mNext < a.currentTime - 0.3) mNext = a.currentTime + 0.06;
+    const BEAT = 60 / song.bpm / 2, S = song;
     while (mNext < a.currentTime + 0.35) {
-      const bar = Math.floor(mStep / 8) % PROG.length, st = mStep % 8, ch = PROG[bar];
-      if (st === 0) tone(semi(130.81, ch[0]), BEAT * 7, { at: mNext, vol: 0.09, attack: 0.03, bus: musBus });
-      if (st === 4) tone(semi(130.81, ch[2]), BEAT * 3.5, { at: mNext, vol: 0.05, attack: 0.03, bus: musBus });
-      tone(semi(261.63, ch[ARP[st]]), BEAT * 2.2, { at: mNext, type: 'triangle', vol: 0.035, bus: musBus });
-      if (st % 2 === 0 && Math.random() < 0.45) {
-        mel = clamp(mel + pick([-2, -1, -1, 1, 1, 2]), 0, PENTA.length - 1);
-        tone(semi(523.25, PENTA[mel]), BEAT * 2.6, { at: mNext, vol: 0.045, attack: 0.01, bus: musBus });
+      const bar = Math.floor(mStep / S.st) % S.prog.length, st = mStep % S.st, ch = S.prog[bar];
+      if (st === 0) tone(semi(130.81, ch[0]), BEAT * (S.st - 1), { at: mNext, vol: 0.09, attack: 0.03, bus: musBus });
+      if (st === S.st / 2) tone(semi(130.81, ch[2]), BEAT * (S.st / 2 - 0.5), { at: mNext, vol: 0.05, attack: 0.03, bus: musBus });
+      tone(semi(261.63, ch[S.arp[st] % ch.length]), BEAT * 2.2, { at: mNext, type: S.at, vol: S.av || 0.035, bus: musBus });
+      if (st % 2 === 0 && Math.random() < S.mp) {
+        mel = clamp(mel + pick([-2, -1, -1, 1, 1, 2]), 0, S.mel.length - 1);
+        const f = semi(S.mo, S.mel[mel]), d = BEAT * (S.slow ? 3.6 : 2.6);
+        tone(f, d, { at: mNext, type: S.mt, vol: 0.045, attack: S.slow ? 0.06 : 0.01, bus: musBus });
+        if (S.bell) tone(f * 2.76, d * 0.5, { at: mNext, vol: 0.012, bus: musBus });
       }
+      if (S.jingle && st % 2 === 1) noise(0.05, { at: mNext, vol: 0.018, freq: 8000, q: 0.8, bus: musBus });
       mStep++; mNext += BEAT;
     }
   }
@@ -877,7 +921,8 @@ const Snd = (() => {
     get music() { return music; },
     setMusic(v) { music = !!v; musicUpdate(); },
     unlock() { if (!gestured) { gestured = true; if (enabled) ensure(); musicUpdate(); } },
-    play(name, arg) { if (!enabled || paused || !gestured) return; try { FX[name] && FX[name](arg); } catch (e) {} },
+    play(name, arg, arg2) { if (!enabled || paused || !gestured) return; try { FX[name] && FX[name](arg, arg2); } catch (e) {} },
+    setSong(i) { const n = SONGS[clamp(i | 0, 0, SONGS.length - 1)]; if (n !== song) { song = n; mStep = 0; mel = 3; } },
     get enabled() { return enabled; },
     setEnabled(v) { enabled = !!v; if (v) ensure(); musicUpdate(); },
     pause(v) { paused = !!v; if (ac) { (v ? ac.suspend() : ac.resume()).catch(() => {}); } },
@@ -1789,6 +1834,7 @@ function renderKey(key, px) {
       case 'heart': heartArt(g); break;
       case 'crown': crownArt(g); break;
       case 'gift': giftArt(g); break;
+      case 'host': drawHost(g, p[1]); break;
     }
   } catch (e) { console.error('art', key, e); }
   return c;
@@ -2078,6 +2124,7 @@ function layout() {
   USPR.setSize(64 * L.dpr);
   el.toast.style.top = (L.by + cs * 0.6) + 'px';
   $('tip').style.top = (L.by + cs * 5.55) + 'px';
+  $('host').style.bottom = (botH + 8) + 'px';
   const ii = el.infoIcon; const ip = Math.round(ii.clientWidth * L.dpr) || 64; ii.width = ii.height = ip;
   buildBg();
   updateInfo();
@@ -2093,8 +2140,36 @@ function patShape(g, shape, x, y) {
   }
 }
 const theme = () => THEMES[(G && G.th) || 0];
+const songIndex = () => (G && G.th) || 0;
+let interior = null;
+/** Bakery wall with shelves and lamps; each order card shows its slice of it behind the guest. */
+function buildInterior() {
+  const T = theme(), dpr = L.dpr, W = L.W, H0 = Math.round(L.oh * 0.56);
+  const c = interior || document.createElement('canvas'); interior = c;
+  c.width = Math.round(W * dpr); c.height = Math.round(H0 * dpr);
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.lineJoin = 'round';
+  g.fillStyle = lg(g, 0, 0, 0, H0, T.wall[0], T.wall[1]); g.fillRect(0, 0, W, H0);
+  g.fillStyle = 'rgba(255,255,255,0.22)'; for (let x = 0; x < W; x += 18) g.fillRect(x, 0, 8, H0);
+  const shelf = (y, items) => {
+    const n = items.length, sz = Math.min(H0 * 0.34, W / n * 0.8);
+    items.forEach((k, i) => { const x = (i + 0.5) * W / n; g.drawImage(renderKey(k, Math.round(sz * dpr)), x - sz / 2, y - sz * 0.92, sz, sz); });
+    rr(g, -4, y - 2, W + 8, 6, 2); g.fillStyle = lg(g, 0, y - 2, 0, y + 4, T.counter[0], T.counter[1]); g.fill(); g.lineWidth = 1.5; g.strokeStyle = OUT; g.stroke();
+    g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, y + 4, W, 3);
+  };
+  shelf(H0 * 0.5, ['i:bread:5', 'i:cake:4', 'i:fruit:4', 'i:bread:6', 'i:cake:6', 'i:coffee:4', 'i:fruit:6', 'i:bread:7', 'i:ice:6']);
+  shelf(H0 * 0.98, ['i:cake:7', 'i:bread:4', 'i:fruit:5', 'i:coffee:6', 'i:bread:8', 'i:cake:5', 'i:ice:4']);
+  L.lamps = [];
+  for (const R of L.cards) for (const fx of [0.13, 0.87]) {
+    const x = R.x + R.w * fx, len = H0 * 0.16;
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, len); g.lineWidth = 1.5; g.strokeStyle = OUT; g.stroke();
+    g.beginPath(); g.moveTo(x - H0 * 0.07, len + H0 * 0.06); g.quadraticCurveTo(x, len - H0 * 0.03, x + H0 * 0.07, len + H0 * 0.06); g.closePath();
+    g.fillStyle = T.aw[0]; g.fill(); g.lineWidth = 1.5; g.stroke();
+    L.lamps.push({ x, y: len + H0 * 0.07 });
+  }
+}
 function buildBg() {
   const { W, H, dpr } = L, T = theme();
+  Snd.setSong(songIndex());
   document.body.style.background = T.page; app.style.background = T.wall[1];
   const g = bgCanvas.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -2104,6 +2179,7 @@ function buildBg() {
   g.fillStyle = T.pat;
   const sp = 26;
   for (let y = 0, row = 0; y < H + sp; y += sp, row++) for (let x = (row % 2) * sp / 2; x < W + sp; x += sp) patShape(g, T.shape, x, y);
+  buildInterior();
   // shop window behind customers
   const wy = L.oy - 6, wh = L.oh + 10;
   rr(g, 4, wy, W - 8, wh, 14); g.fillStyle = 'rgba(255,255,255,0.5)'; g.fill();
@@ -2346,7 +2422,10 @@ function spawnFrom(gi) {
   G.energy--;
   const lvl = G.tu >= TUT_DONE && Math.random() * 100 < luckPct() ? 2 : 1;   // no lucky spawns during the tutorial
   const p = cellCenter(gi);
-  board[tIdx] = { k: 'i', c: gen.c, l: lvl, _ft: now, _fd: 320, _fx: p.x, _fy: p.y - L.cs * 0.2, _arc: 1, _land: 1 };
+  const sty = SPAWN_STYLE[gen.c] || 'arc';
+  board[tIdx] = { k: 'i', c: gen.c, l: lvl, _ft: now, _fd: sty === 'roll' ? 430 : sty === 'drop' ? 560 : 340, _fx: p.x, _fy: p.y - L.cs * (sty === 'drop' ? 0.45 : 0.2), _arc: sty === 'roll' ? 0.12 : sty === 'drop' ? 1.3 : 1, _land: 1, _sty: sty };
+  if (gen.c === 'bread') FX.burst(p.x, p.y - L.cs * 0.1, '#ffffff', 6, 0.45);
+  else if (gen.c === 'coffee') for (let k = 0; k < 3; k++) FX.trail(p.x + L.cs * 0.1, p.y - L.cs * 0.35);
   if (lvl > (G.disc[gen.c] || 1)) G.disc[gen.c] = lvl;
   Snd.play('spawn');
   FX.burst(p.x, p.y - L.cs * 0.2, '#ffffff', 5, 0.5);
@@ -2383,7 +2462,7 @@ function doMerge(from, to) {
   FX.burst(p.x, p.y, CHAINS[A.c].color, 14 + nl * 2, 1 + nl * 0.08);
   FX.ring(p.x, p.y, L.cs * (0.7 + nl * 0.05), '#fffbe6');
   FX.ring(p.x, p.y, L.cs * 1.1, '#fff', true);
-  Snd.play('merge', nl);
+  Snd.play('merge', nl, A.c);
   if (nl >= 6) { shakeT = now; shakeAmp = 2 + (nl - 6) * 1.5; }
   if (nl >= 4) buzz(nl >= 6 ? 25 : 12);
   for (const nb of neighbors(to)) if (board[nb] && board[nb].k === 'x') hitCrate(nb);
@@ -2792,14 +2871,18 @@ function openModal(cfg) {
   });
   el.mBtns.classList.toggle('hidden', !(cfg.buttons && cfg.buttons.length));
   fillIcons(el.mBtns);
+  clearTimeout(modalHideT); el.modal.classList.remove('closing');
   el.modal.classList.remove('hidden');
   el.modal._onClose = cfg.onClose || null;
   el.modal._kind = cfg.kind || '';
   if (press) cancelPress();
 }
+let modalHideT = 0;
 function closeModal() {
   if (!modalOpen) return;
-  el.modal.classList.add('hidden');
+  el.modal.classList.add('closing');
+  clearTimeout(modalHideT);
+  modalHideT = setTimeout(() => { if (!modalOpen) el.modal.classList.add('hidden'); el.modal.classList.remove('closing'); }, 170);
   modalOpen = false;
   const cb = el.modal._onClose; el.modal._onClose = null;
   Platform.gameplayStart();
@@ -2824,6 +2907,7 @@ function noEnergy() {
   const now = performance.now();
   shakeEl(el.pEnergy);
   if (now - lastNoEnergyModal < 15000) { toast(t('t_no_energy')); return; }
+  hostSay('host_noenergy', null, 'n');
   lastNoEnergyModal = now;
   const left = regenMs() - (Date.now() - G.eTs);
   openModal({
@@ -2854,7 +2938,7 @@ function showLevelUp() {
       coinShower(p.x, p.y, coins, 0); energyShower(p.x, p.y, 5);
       FX.burst(p.x, p.y, '#ffcc3e', 24, 1.4);
       saveSoon();
-      if (pendingLevelUp) setTimeout(showLevelUp, 600); else maybeInterstitial(900);
+      if (pendingLevelUp) setTimeout(showLevelUp, 600); else { maybeInterstitial(900); if (Math.random() < 0.5) hostSay('host_lvl' + rint(1, 3)); }
     } }],
   });
 }
@@ -2881,7 +2965,7 @@ function buyUpgrade(u) {
   const lvl = G.up[u.id];
   if (lvl >= u.cost.length || lockedByLvl(u) || G.coins < u.cost[lvl]) return false;
   G.coins -= u.cost[lvl]; dispCoins = G.coins; G.up[u.id]++;
-  if (u.chain) { G.disc[u.id] = Math.max(G.disc[u.id] || 1, 1); placeGen(u.id); changed(); }
+  if (u.chain) { G.disc[u.id] = Math.max(G.disc[u.id] || 1, 1); placeGen(u.id); changed(); hostSay('host_chain', { name: t('chain_' + u.id) }); }
   if (u.id === 'cap') G.energy += 10;
   saveSoon();
   return true;
@@ -3049,7 +3133,7 @@ function findPair(prefC, prefL) {
 function tutAdvance(to) {
   if (G.tu >= TUT_DONE) return;
   G.tu = to;
-  if (to >= TUT_DONE) { toast(t('tut_done'), 2600); Snd.play('reward'); updateGift(); }
+  if (to >= TUT_DONE) { toast(t('tut_done'), 2600); Snd.play('reward'); updateGift(); setTimeout(() => hostSay('host_hi'), 2800); }
   saveSoon();
 }
 function tutTarget() {
@@ -3140,7 +3224,7 @@ function doPrestige() {
   FX.burst(L.W / 2, L.H * 0.45, '#ffcc3e', 30, 1.6);
   const name = t('theme_' + G.th);
   openModal({ title: t('pr_done_title', { name }), html: '<div class="bigicon">' + ICON.house + '</div><p class="center">' + t('pr_done_text', { p: Math.round(PRESTIGE_BONUS * 100 * G.pr) }) + '</p>',
-    buttons: [{ label: t('great'), cls: 'green', act: closeModal }] });
+    buttons: [{ label: t('great'), cls: 'green', act: () => { closeModal(); hostSay('host_prestige'); } }] });
 }
 
 /* ---------- Achievements ---------- */
@@ -3183,7 +3267,7 @@ function showAway() {
   const coins = Math.max(5, Math.round(h * (6 + 2 * G.lvl) * coinMult()));
   awayMs = 0;
   const hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
-  const claim = mult => { closeModal(); G.coins += coins * mult; Snd.play('reward'); coinShower(L.W / 2, L.H * 0.45, coins * mult, 0); saveSoon(); };
+  const claim = mult => { closeModal(); hostSay('host_back'); G.coins += coins * mult; Snd.play('reward'); coinShower(L.W / 2, L.H * 0.45, coins * mult, 0); saveSoon(); };
   openModal({
     title: t('away_title'),
     html: '<div class="bigicon">' + ICON.house + '</div><p class="center">' + t('away_text', { h: t('hours', { h: hh, m: mm }) }) + '</p><div class="rew"><span>+' + coins + ICON.coin + '</span></div>',
@@ -3280,6 +3364,108 @@ function spinWheel(cv, img, bt) {
     requestAnimationFrame(anim);
   };
   if (free) go(); else Platform.showRewarded(ok => ok && go());
+}
+/* ---------- Host: Pyshka the mouse chef ---------- */
+function drawHost(g, expr) {
+  g.beginPath(); g.moveTo(12, 101); g.bezierCurveTo(12, 72, 88, 72, 88, 101); g.closePath(); fs(g, '#ff9dba', 4.5);
+  rr(g, 32, 80, 36, 24, 6); fs(g, '#fffaf4', 3.5); rr(g, 43, 88, 14, 8, 3); fs(g, '#ffd2df', 2.5);
+  circ(g, 22, 34, 15); fs(g, '#bdb6c8'); circ(g, 78, 34, 15); fs(g, '#bdb6c8');
+  circ(g, 23, 35, 9); g.fillStyle = '#ffc2d1'; g.fill(); circ(g, 77, 35, 9); g.fill();
+  ell(g, 50, 54, 28, 25); g.fillStyle = '#c9c3d3'; g.fill(); hl(g, 40, 40, 9, 5, -0.3, 0.35); ell(g, 50, 54, 28, 25); st(g, 4.5);
+  const puffs = [[37, 15, 10], [50, 10, 12], [63, 15, 10]];
+  for (const p of puffs) { circ(g, p[0], p[1], p[2]); g.lineWidth = 9; g.strokeStyle = OUT; g.stroke(); }
+  for (const p of puffs) { circ(g, p[0], p[1], p[2]); g.fillStyle = '#ffffff'; g.fill(); }
+  rr(g, 33, 20, 34, 12, 4); fs(g, '#ffffff', 4);
+  g.fillStyle = 'rgba(255,105,130,0.42)'; ell(g, 32, 62, 5, 3.2); g.fill(); ell(g, 68, 62, 5, 3.2); g.fill();
+  if (expr === 'h') {
+    g.beginPath(); g.moveTo(36, 54); g.quadraticCurveTo(40.5, 47, 45, 54); g.moveTo(55, 54); g.quadraticCurveTo(59.5, 47, 64, 54); g.lineWidth = 3.4; g.strokeStyle = OUT; g.stroke();
+  } else {
+    ell(g, 40.5, 52, 4, 5.2); g.fillStyle = OUT; g.fill(); ell(g, 59.5, 52, 4, 5.2); g.fill();
+    g.fillStyle = '#fff'; circ(g, 42, 50, 1.6); g.fill(); circ(g, 61, 50, 1.6); g.fill();
+  }
+  ell(g, 50, 60, 4, 3); fs(g, '#ff7a95', 2);
+  strokeLine(g, [22, 60, 34, 62], 1.6); strokeLine(g, [22, 66, 34, 65], 1.6); strokeLine(g, [78, 60, 66, 62], 1.6); strokeLine(g, [78, 66, 66, 65], 1.6);
+  if (expr === 't' || expr === 'h') { g.beginPath(); g.ellipse(50, 68, 5, expr === 't' ? 4.5 : 3.5, 0, 0, Math.PI * 2); fs(g, '#c23b4a', 2.4); }
+  else { g.beginPath(); g.moveTo(45, 66); g.quadraticCurveTo(50, 70, 55, 66); g.lineWidth = 2.4; g.strokeStyle = OUT; g.stroke(); }
+}
+const Host = {
+  q: [], on: false, lastSay: performance.now() - 60000, lastTip: -1, timer: 0, hideT: 0, imgs: {},
+  ava(expr) {
+    const cv = $('hostAva'), px = cv.width;
+    const k = expr + px; if (!this.imgs[k]) this.imgs[k] = renderKey('host:' + expr, px);
+    const g = cv.getContext('2d'); g.clearRect(0, 0, px, px); g.drawImage(this.imgs[k], 0, 0);
+  },
+  say(text, end) {
+    if (!G || G.tu < TUT_DONE && end !== 'force') return;
+    if (this.on || modalOpen || Platform.adOpen) { if (this.q.length < 3 && !this.q.some(x => x[0] === text)) this.q.push([text, end]); return; }
+    this.on = true; this.lastSay = performance.now();
+    const box = $('host'), bub = $('hostBubble');
+    const cv = $('hostAva'), px = Math.round(cv.clientWidth * L.dpr) || 96; if (cv.width !== px) { cv.width = cv.height = px; this.imgs = {}; }
+    bub.textContent = ''; box.classList.remove('hidden'); void box.offsetWidth; box.classList.add('show');
+    let i = 0; clearInterval(this.timer); clearTimeout(this.hideT);
+    this.timer = setInterval(() => {
+      i += 1; bub.textContent = text.slice(0, i);
+      if (i % 3 === 1) { Snd.play('blip'); this.ava(i % 6 === 1 ? 't' : 'n'); }
+      if (i >= text.length) { clearInterval(this.timer); this.ava(end === 'n' ? 'n' : 'h'); this.hideT = setTimeout(() => this.hide(), 2600 + text.length * 30); }
+    }, 28);
+  },
+  hide() {
+    clearInterval(this.timer); clearTimeout(this.hideT);
+    const box = $('host'); box.classList.remove('show');
+    setTimeout(() => { if (!box.classList.contains('show')) box.classList.add('hidden'); this.on = false; }, 350);
+  },
+  pump() { if (!this.on && this.q.length && !modalOpen && !Platform.adOpen) { const [t0, e] = this.q.shift(); this.say(t0, e); } },
+  tick(now) {
+    this.pump();
+    if (!this.on && G.tu >= TUT_DONE && !modalOpen && !press && now - this.lastSay > 150000 && now - lastInput < 20000) {
+      const tips = t('host_tips'); let k = rint(0, tips.length - 1); if (k === this.lastTip) k = (k + 1) % tips.length;
+      this.lastTip = k; this.say(tips[k]);
+    }
+  },
+};
+const hostSay = (key, p, end) => Host.say(t(key, p), end);
+
+/* ---------- Animated logo on the loading screen ---------- */
+function runLogo() {
+  const cv = $('logo'); if (!cv) return;
+  const w = Math.min(window.innerWidth * 0.88, 380), h = w * 0.78, dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.style.width = w + 'px'; cv.style.height = h + 'px'; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const g = cv.getContext('2d'), t0 = performance.now();
+  const bun = renderKey('i:bread:7', Math.round(w * 0.5 * dpr)), cake = renderKey('i:cake:4', Math.round(w * 0.26 * dpr)), cher = renderKey('i:fruit:1', Math.round(w * 0.22 * dpr)), spark = renderKey('spark', 64);
+  const title = t('title'), parts = title.split('-'), l1 = parts[0], l2 = parts.slice(1).join('-');
+  const frame = now => {
+    if ($('loader').classList.contains('hidden')) return;
+    const k = (now - t0) / 1000;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    g.save(); g.translate(w / 2, h * 0.62); g.rotate(k * 0.4); g.fillStyle = 'rgba(255,240,180,0.55)';
+    for (let i = 0; i < 12; i++) { g.rotate(Math.PI / 6); g.beginPath(); g.moveTo(0, 0); g.lineTo(-w * 0.07, -w * 0.62); g.lineTo(w * 0.07, -w * 0.62); g.closePath(); g.fill(); }
+    g.restore();
+    const bi = Math.min(1, k / 0.5), bs = easeOutBack(bi), sq = 1 + Math.sin(k * 6) * 0.03;
+    g.save(); g.translate(w / 2, h * 0.86); g.scale(bs / sq, bs * sq); g.drawImage(bun, -w * 0.25, -w * 0.45, w * 0.5, w * 0.5); g.restore();
+    const ci = Math.min(1, Math.max(0, (k - 0.3) / 0.4));
+    if (ci > 0) { g.globalAlpha = ci; g.drawImage(cake, w * 0.06, h * 0.52 - Math.sin(k * 3) * 4, w * 0.26, w * 0.26); g.drawImage(cher, w * 0.7, h * 0.56 + Math.sin(k * 3 + 1) * 4, w * 0.22, w * 0.22); g.globalAlpha = 1; }
+    const drawLine = (txt, y, size, delay) => {
+      g.font = '900 ' + size + 'px ' + FONT; g.textBaseline = 'middle'; g.lineJoin = 'round';
+      const ws = [...txt].map(ch => g.measureText(ch).width), total = ws.reduce((a, b) => a + b, 0);
+      let x = w / 2 - total / 2;
+      [...txt].forEach((ch, i) => {
+        const li = Math.min(1, Math.max(0, (k - delay - i * 0.06) / 0.35));
+        if (li > 0) {
+          const dy = (1 - bounceOut(li)) * -size * 1.3 + Math.sin(k * 3 + i * 0.6) * size * 0.04;
+          g.globalAlpha = Math.min(1, li * 3);
+          g.lineWidth = size * 0.26; g.strokeStyle = OUT; g.strokeText(ch, x, y + dy);
+          g.fillStyle = i % 2 ? '#ffe27a' : '#ffffff'; g.fillText(ch, x, y + dy);
+          g.globalAlpha = 1;
+        }
+        x += ws[i];
+      });
+    };
+    drawLine(l1, h * 0.16, Math.round(w * 0.15), 0.15);
+    if (l2) drawLine(l2, h * 0.36, Math.round(w * 0.12), 0.4 + l1.length * 0.06);
+    for (let i = 0; i < 4; i++) { const ph = (k * 0.7 + i * 0.27) % 1, sz = Math.sin(ph * Math.PI) * w * 0.06; g.drawImage(spark, w * [0.12, 0.85, 0.2, 0.8][i] - sz / 2, h * [0.1, 0.2, 0.45, 0.4][i] - sz / 2, sz, sz); }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
 }
 function buildSettings() {
   const w = document.createElement('div');
@@ -3502,6 +3688,7 @@ function bindUI() {
   btn(el.pLevel, () => toast(t('lvl_info', { l: G.lvl, x: G.xp, n: xpNeed(G.lvl) })));
   btn(el.btnSound, () => setSound(!Snd.enabled));
   btn($('btnGift'), showDaily);
+  $('host').addEventListener('click', () => Host.hide());
   el.pEnergy.addEventListener('click', () => { if (G.energy < energyMax()) { Snd.play('click'); noEnergyInfo(); } });
 }
 function noEnergyInfo() {
@@ -3538,7 +3725,11 @@ function drawOrders(now) {
     g.save();
     rr(g, R.x, R.y, R.w, R.h, 12); g.clip();
     if (o.vip) { g.fillStyle = lg(g, 0, R.y, 0, R.y + R.h * 0.56, '#fff3b0', '#ffc94a'); g.fillRect(R.x, R.y, R.w, R.h * 0.56); }
-    else { g.fillStyle = C.bg; g.fillRect(R.x, R.y, R.w, R.h * 0.56); }
+    else {
+      if (interior) g.drawImage(interior, R.x * L.dpr, 0, R.w * L.dpr, interior.height, R.x, R.y, R.w, interior.height / L.dpr);
+      g.globalAlpha = 0.38; g.fillStyle = C.bg; g.fillRect(R.x, R.y, R.w, R.h * 0.56); g.globalAlpha = 1;
+      if (L.lamps) { g.globalAlpha = 0.28 + 0.06 * Math.sin(now * 0.002 + s); for (const lp of L.lamps) if (lp.x > R.x && lp.x < R.x + R.w) drawImg(USPR.get('glow'), lp.x, R.y + lp.y + 4, R.h * 0.3); g.globalAlpha = 1; }
+    }
     g.globalAlpha = alpha;
     const expr = o.sad ? 'b' : (o.ready || sl.state === 'out') ? 'h' : (((now + o.ph) % 3800) < 150 ? 'b' : 'n');
     const img = CSPR.get('c:' + o.cust + ':' + expr);
@@ -3723,11 +3914,19 @@ function drawBoard(now, dt) {
     const it = board[i]; if (!it) continue;
     if (dragging && press.i === i) continue;
     const c = cellCenter(i);
-    let x = c.x, y = c.y, s = 1;
+    let x = c.x, y = c.y, s = 1, rot = 0;
     if (it._ft) {
       const k = (now - it._ft) / (it._fd || 200);
       if (k >= 1) { it._ft = 0; if (it._land) { it._land = 0; it._pop = now; } }
-      else { const e = easeOutCubic(k); x = lerp(it._fx, c.x, e); y = lerp(it._fy, c.y, e) - Math.sin(k * Math.PI) * cs * 0.6 * (it._arc || 0); s = it._arc ? 0.5 + 0.5 * e : 1; }
+      else {
+        const sty = it._sty, e = sty === 'drop' ? bounceOut(k) : easeOutCubic(k);
+        x = lerp(it._fx, c.x, e);
+        y = sty === 'drop' ? lerp(it._fy, c.y, e) - Math.sin(Math.min(1, k * 2.2) * Math.PI) * cs * 0.6 * (it._arc || 0) * (k < 0.45 ? 1 : 0)
+          : lerp(it._fy, c.y, e) - Math.sin(k * Math.PI) * cs * 0.6 * (it._arc || 0);
+        s = it._arc ? 0.5 + 0.5 * e : 1;
+        if (sty === 'roll') { s = 1; rot = (x - it._fx) / (cs * 0.33); }
+        else if (sty === 'pop') s = k < 0.6 ? 0.2 + k * 1.6 : 1.16 - (k - 0.6) * 0.4;
+      }
     }
     if (it._pop) { const k = (now - it._pop) / 420; if (k >= 1) it._pop = 0; else s *= popScale(k); }
     if (it._shk) { const k = (now - it._shk) / 380; if (k >= 1) it._shk = 0; else x += Math.sin(k * 38) * (1 - k) * cs * 0.07; }
@@ -3741,7 +3940,8 @@ function drawBoard(now, dt) {
       ctx.globalAlpha = 1;
     }
     else {
-      drawImg(SPR.get('i:' + it.c + ':' + it.l), x, y, isz * s);
+      if (rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot); drawImg(SPR.get('i:' + it.c + ':' + it.l), 0, 0, isz * s); ctx.restore(); }
+      else drawImg(SPR.get('i:' + it.c + ':' + it.l), x, y, isz * s);
       if (it.l >= 5) {
         const ph = (now * 0.00045 + i * 0.37) % 1;
         if (ph < 0.09) { const k = Math.sin(ph / 0.09 * Math.PI); drawImg(USPR.get('spark'), x + cs * 0.22, y - cs * 0.22, cs * 0.42 * k); }
@@ -3814,6 +4014,7 @@ function render(now, dt) {
 let lastT = performance.now(), running = false, lastSlowTick = 0;
 function slowTick(now) {
   updateGift();
+  Host.tick(now);
   const sd = shopAttention(); if (hudCache.sd !== sd) { hudCache.sd = sd; $('shopDot').classList.toggle('hidden', !sd); }
   ensureQuests();
   const qd = questsClaimable() || (questsActive() && (achClaimable() || wheelFree())); if (hudCache.qd !== qd) { hudCache.qd = qd; $('questDot').classList.toggle('hidden', !qd); }
@@ -3836,7 +4037,7 @@ function update(now) {
     const sl = slots[s];
     if (sl.state === 'out' && now >= sl.next) {
       setOrder(s, genOrder()); recount(); hintDirty = true; saveSoon();
-      if (slots[s].o.vip) { Snd.play('vip'); toast(t('t_vip')); }
+      if (slots[s].o.vip) { Snd.play('vip'); toast(t('t_vip')); hostSay('host_vip'); }
     }
   }
   if (saveAt && now >= saveAt) saveNow();
@@ -3897,13 +4098,14 @@ Platform.hooks.onAdClose = () => { if (!pauses.size) Snd.pause(false); if (!moda
    18. BOOT
    ===================================================================== */
 function drawLoaderIcon() {
-  const c = $('loaderIcon'), g = c.getContext('2d');
+  const c = $('logo'); if (!c) return; const g = c.getContext('2d');
   g.drawImage(renderKey('i:bread:4', c.width), 0, 0);
 }
 function boot() {
-  try { drawLoaderIcon(); } catch (e) {}
+  const bootT = performance.now();
   LANG = Platform.getLang();
-  $('loaderTitle').textContent = t('title'); $('loaderText').textContent = t('loading');
+  try { runLogo(); } catch (e) { console.warn(e); }
+  $('loaderText').textContent = t('loading');
   fillIcons();
   Platform.init().then(() => Platform.loadData()).then(d => {
     let ok = false;
@@ -3924,7 +4126,8 @@ function boot() {
     startLoop();
     Platform.gameReady();
     Platform.gameplayStart();
-    const ld = $('loader'); ld.classList.add('fade'); setTimeout(() => ld.classList.add('hidden'), 500);
+    const ld = $('loader');
+    setTimeout(() => { ld.classList.add('fade'); setTimeout(() => ld.classList.add('hidden'), 500); }, Math.max(0, 1300 - (performance.now() - bootT)));
     if (G.tu === 0) setTimeout(showWelcome, 350);
     else { if (dailyAvailable()) setTimeout(showDaily, 700); setTimeout(showAway, 800); }
   }).catch(e => { console.error(e); $('loaderText').textContent = 'Error: ' + e.message; });
@@ -3933,7 +4136,7 @@ function boot() {
 // debug handle for automated tests (read-only use)
 window.__bakery = {
   get G() { return G; }, get board() { return board; }, get slots() { return slots; }, L,
-  get focus() { return focus; }, get wheel() { return G.wh; },
+  get focus() { return focus; }, get wheel() { return G.wh; }, hostSay: (k, p) => hostSay(k, p), songIndex: () => songIndex(),
   sim: { UPG, CHAINS, buyUpgrade, handleDrop, genOrder, tickEnergy, sellPrice, xpNeed, regenMs, energyMax, slowTick: () => slowTick(performance.now()) },
   cellCenter, deliver, spawnFrom: i => spawnFrom(i), layout, renderKey, CUST, render, FX, I18N, Platform, Snd, spawnBubble: (a, c, l) => spawnBubble(a, c, l), setOrder: (s, o, i) => setOrder(s, o, i), makeOrder: r => makeOrder(r), recount: () => recount(), changed: () => changed(), dayStr: d => dayStr(d),
 };
